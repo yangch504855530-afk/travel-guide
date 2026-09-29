@@ -1,0 +1,3392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0a4d4d">
+<meta name="description" content="多城市通用旅行攻略工具：游玩时长·人群适配·交通方式·行程生成·预算估算，离线可用">
+<title>旅行攻略工具 · 游玩时长/人群适配/交通/行程</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌍</text></svg>">
+<style>
+/* 伊斯坦布尔旅行攻略工具 — 样式（无外部资源） */
+:root {
+  --bg: #f6f1e7; --card: #ffffff; --ink: #2b2118; --muted: #7a6a58;
+  --teal: #0f6b6b; --teal-dark: #0a4d4d; --terra: #c2571b; --gold: #b98a2f;
+  --line: #e6dccb; --danger: #b3261e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+  background: var(--bg); color: var(--ink); line-height: 1.65; }
+
+header.site {
+  background: linear-gradient(135deg, var(--teal-dark) 0%, var(--teal) 60%, #12867f 100%);
+  color: #fff; padding: 22px 18px 14px; }
+header.site h1 { font-size: 22px; letter-spacing: 1px; }
+header.site .sub { opacity: .85; font-size: 13px; margin-top: 4px; }
+header.site .disclaimer { margin-top: 10px; font-size: 12px; background: rgba(255,255,255,.14);
+  border-radius: 8px; padding: 6px 10px; display: inline-block; }
+.citybar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; }
+.citybar-label { font-size: 12.5px; opacity: .85; }
+#city-select { flex: 1 1 160px; min-width: 0; max-width: 320px; padding: 7px 10px; border-radius: 10px;
+  border: none; font-size: 14px; background: #fff; color: var(--teal-dark); font-weight: 700; }
+.citybar .mini { border: 1px solid rgba(255,255,255,.5); background: rgba(255,255,255,.14); color: #fff;
+  font-size: 12.5px; padding: 7px 12px; border-radius: 999px; cursor: pointer; }
+.citybar .mini:hover { background: rgba(255,255,255,.28); }
+
+#toast { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+  max-width: 520px; width: calc(100% - 32px); background: #173c3c; color: #fff; font-size: 13.5px;
+  border-radius: 12px; padding: 12px 16px; box-shadow: 0 6px 24px rgba(0,0,0,.35);
+  opacity: 0; pointer-events: none; transition: all .3s; z-index: 999; line-height: 1.55; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#toast.err { background: #7a1f18; max-height: 40vh; overflow-y: auto; }
+
+nav.tabs { position: sticky; top: 0; z-index: 50; background: var(--teal-dark);
+  display: flex; gap: 6px; padding: 8px 12px; overflow-x: auto; }
+nav.tabs button { flex: 0 0 auto; border: none; cursor: pointer; font-size: 14px;
+  padding: 8px 14px; border-radius: 999px; background: rgba(255,255,255,.12); color: #fff; }
+nav.tabs button.active { background: #fff; color: var(--teal-dark); font-weight: 700; }
+
+main { max-width: 1080px; margin: 0 auto; padding: 18px 14px 60px; }
+section.view { display: none; }
+section.view.active { display: block; }
+
+h2.vt { font-size: 20px; margin: 6px 0 4px; color: var(--teal-dark); }
+p.vd { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+
+.grid { display: grid; gap: 12px; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 720px) { .g2, .g3 { grid-template-columns: 1fr; } }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;
+  box-shadow: 0 1px 3px rgba(43,33,24,.06); }
+.card h3 { font-size: 15.5px; margin-bottom: 6px; }
+.qf { text-align: center; }
+.qf .icon { font-size: 22px; }
+.qf .k { font-weight: 700; font-size: 13px; margin-top: 2px; }
+.qf .v { font-size: 12px; color: var(--muted); }
+
+/* 景点卡片 */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; align-items: center; }
+.filters input[type=search], .filters select, .planner-form select, .planner-form input {
+  padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
+  font-size: 14px; color: var(--ink); }
+.count { color: var(--muted); font-size: 13px; margin-left: auto; }
+.attr-card { border-left: 5px solid var(--teal); }
+.attr-card .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.badge { font-size: 12px; background: #eef5f4; color: var(--teal-dark); border-radius: 999px; padding: 2px 10px; }
+.badge.price { background: #f8efe3; color: #8a5a12; }
+.badge.time { background: #f0e9f8; color: #5a3d8a; }
+.badge.warnclose { background: #fdeceb; color: var(--danger); }
+.fit-row { display: flex; flex-wrap: wrap; gap: 5px; font-size: 12px; color: var(--muted); margin: 6px 0; }
+.fit-row b { color: var(--ink); font-weight: 600; }
+.attr-card .transport { font-size: 13px; color: var(--teal-dark); background: #eef5f4;
+  border-radius: 8px; padding: 4px 8px; margin: 6px 0; }
+.attr-card details { margin-top: 6px; font-size: 13px; }
+.attr-card details summary { cursor: pointer; color: var(--terra); font-weight: 600; }
+.attr-card ul { padding-left: 18px; }
+.desc { font-size: 13px; color: var(--muted); }
+
+/* 表单 */
+.planner-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px 14px; }
+.planner-form label { font-size: 12.5px; color: var(--muted); display: block; margin-bottom: 3px; }
+.planner-form .field { min-width: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; border: 1px solid var(--line); background: #fff; border-radius: 999px;
+  padding: 5px 12px; cursor: pointer; user-select: none; }
+.chip.on { background: var(--teal); color: #fff; border-color: var(--teal); font-weight: 700; }
+.chip.on::after { content: ' ✓'; }
+.btn { display: inline-block; border: none; cursor: pointer; font-size: 15px; font-weight: 700;
+  background: var(--terra); color: #fff; border-radius: 12px; padding: 10px 22px; margin-top: 12px; }
+.btn.secondary { background: var(--teal); }
+.btn:active { transform: translateY(1px); }
+
+/* 行程时间线 */
+.day-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 18px 0 8px; }
+.day-head h3 { font-size: 17px; color: var(--teal-dark); }
+.day-head .wd { font-size: 13px; color: var(--terra); font-weight: 700; }
+.day-note { font-size: 12.5px; color: var(--muted); margin: 4px 0 10px; }
+.tl { position: relative; padding-left: 18px; border-left: 3px solid #d8cdb8; margin-left: 8px; }
+.tl-item { position: relative; background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: 10px 14px; margin: 0 0 10px 8px; }
+.tl-item::before { content: ''; position: absolute; left: -24px; top: 18px; width: 11px; height: 11px;
+  border-radius: 50%; background: var(--terra); border: 2px solid #fff; box-shadow: 0 0 0 2px var(--terra); }
+.tl-item.lunch::before { background: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+.tl-time { font-weight: 700; font-size: 13px; color: var(--terra); }
+.tl-name { font-weight: 700; font-size: 15px; }
+.tl-transit { font-size: 12.5px; color: var(--teal-dark); background: #eef5f4; border-radius: 8px;
+  padding: 3px 8px; margin-bottom: 6px; display: inline-block; }
+.tl-meta { font-size: 12.5px; color: var(--muted); }
+.dinner { font-size: 13px; color: var(--ink); background: #fdf6ec; border: 1px dashed var(--gold);
+  border-radius: 10px; padding: 8px 12px; margin-top: 4px; }
+
+.warnbox { background: #fff8e6; border: 1px solid #eedc9a; border-radius: 12px; padding: 10px 14px;
+  font-size: 13px; margin: 12px 0; }
+.skipbox { font-size: 13px; }
+.skipbox li { margin: 3px 0 3px 18px; }
+
+/* 交通 / 贴士 */
+.trans-card h3 { color: var(--teal-dark); }
+.trans-card li, .tips-card li { font-size: 13.5px; margin: 5px 0 5px 18px; }
+.tips-card details { border-top: 1px dashed var(--line); padding: 8px 0; }
+.tips-card details:first-child { border-top: none; }
+.tips-card summary { cursor: pointer; font-weight: 700; font-size: 15px; }
+table.route { width: 100%; border-collapse: collapse; font-size: 13px; background: #fff; }
+table.route th, table.route td { border: 1px solid var(--line); padding: 7px 9px; text-align: left; }
+table.route th { background: #eef5f4; color: var(--teal-dark); }
+@media (max-width: 720px) { table.route { font-size: 12px; } }
+
+/* 预算 */
+.budget { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 10px 0; }
+.budget .card { text-align: center; }
+.budget .big { font-size: 17px; font-weight: 800; color: var(--teal-dark); }
+.budget .lab { font-size: 12px; color: var(--muted); }
+.relbox li { font-size: 13px; margin: 4px 0 4px 18px; }
+
+footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px; }
+
+/* 打印：只保留行程 */
+@media print {
+  header.site, nav.tabs, .planner-form, .filters, footer, .no-print { display: none !important; }
+  body { background: #fff; }
+  section.view { display: none !important; }
+  section.view#view-plan.active { display: block !important; }
+  .card, .tl-item { box-shadow: none; }
+  .btn { display: none !important; }
+}
+
+</style>
+</head>
+<body>
+<header class="site">
+  <h1>🌍 <span id="city-name">旅行攻略工具</span></h1>
+  <div class="sub" id="site-sub">游玩时长 · 人群适配 · 交通方式 · 行程生成 · 预算估算 ｜ 离线可用</div>
+  <div class="disclaimer" id="site-disclaimer">⚠️ 票价/汇率为近似区间，行前以官方渠道为准</div>
+  <div class="citybar">
+    <label class="citybar-label" for="city-select">目的地</label>
+    <select id="city-select" title="切换城市包"></select>
+    <button class="mini" id="btn-import" title="导入 .json 城市包，添加任意城市">📥 导入城市包</button>
+    <button class="mini" id="btn-export" title="把当前城市的数据导出为 JSON 分享">📤 导出当前包</button>
+    <button class="mini" id="btn-template" title="下载填空模板，自制城市包">📄 获取模板</button>
+    <input type="file" id="file-import" accept=".json,application/json" hidden>
+  </div>
+</header>
+
+<nav class="tabs">
+  <button data-tab="overview">🏙️ 总览</button>
+  <button data-tab="library">🏛️ 景点库</button>
+  <button data-tab="planner">🧳 行程规划</button>
+  <button data-tab="transport">🚏 交通指南</button>
+  <button data-tab="tips">🧠 实用贴士</button>
+</nav>
+
+<main>
+  <section class="view" id="view-overview"></section>
+  <section class="view" id="view-library">
+    <h2 class="vt">🏛️ 景点库</h2>
+    <p class="vd">每张卡片都有建议游玩时长、票价、封馆日、人群适配度和"怎么去"。</p>
+    <div class="filters">
+      <input type="search" id="f-q" placeholder="🔍 搜索景点名/关键词">
+      <select id="f-cat"></select>
+      <select id="f-district"></select>
+      <select id="f-group"></select>
+      <span class="count" id="lib-count"></span>
+    </div>
+    <div class="grid g2" id="lib-grid"></div>
+  </section>
+  <section class="view" id="view-planner">
+    <h2 class="vt">🧳 行程规划</h2>
+    <p class="vd">填好下面几项 → 生成按地理分区聚类的逐日行程（自动规避闭馆日）+ 按人数拆分的预算。</p>
+    <div class="card">
+      <div class="planner-form">
+        <div class="field"><label>行程天数</label><input type="range" id="p-days" min="1" max="7" value="4"><b id="p-days-val">4 天</b></div>
+        <div class="field"><label>同行人群</label><select id="p-group"></select></div>
+        <div class="field"><label>节奏</label><select id="p-pace"></select></div>
+        <div class="field"><label>出发日期（可选，用于规避闭馆日）</label><input type="date" id="p-date"></div>
+        <div class="field"><label>住宿区域</label><select id="p-hotel"></select></div>
+        <div class="field"><label>兴趣（可多选）</label>
+          <div class="chips" id="p-interests"></div></div>
+      </div>
+      <div class="planner-form" style="margin-top:10px">
+        <div class="field"><label>总人数</label><input type="number" id="p-heads" min="1" max="20" value="2"></div>
+        <div class="field"><label>其中：成人</label><input type="number" id="p-adults" min="0" value="2"></div>
+        <div class="field"><label>幼童 0-6 岁</label><input type="number" id="p-children6" min="0" value="0"></div>
+        <div class="field"><label>儿童 7-12 岁</label><input type="number" id="p-children712" min="0" value="0"></div>
+        <div class="field"><label>老人 65+</label><input type="number" id="p-seniors" min="0" value="0"></div>
+        <div class="field"><label>餐饮档次</label><select id="p-meal"></select></div>
+        <div class="field"><label>市内交通方式</label><select id="p-transport"></select></div>
+      </div>
+      <button class="btn" id="p-go">✨ 生成我的行程</button>
+    </div>
+    <div id="plan-out"></div>
+  </section>
+  <section class="view" id="view-transport"></section>
+  <section class="view" id="view-tips"></section>
+</main>
+
+<footer>🌍 通用旅行攻略工具：内置城市包 + 导入任意城市包 ｜ 数据为近似区间，行前以官方为准</footer>
+
+<script>
+/* ===== js/packs/istanbul.js ===== */
+/* 城市包：伊斯坦布尔（内置完整包）
+ * 由 data.js 无损转换；字段说明见 docs/CITY-PACK-GUIDE.md
+ */
+(function (global) {
+  const pack = {
+  "META": {
+    "title": "伊斯坦布尔旅行攻略工具",
+    "subtitle": "游玩时长 · 人群适配 · 交通方式 · 行程生成 · 预算估算",
+    "disclaimer": "票价/汇率为 2025-26 里拉高通胀下的近似区间，变动极快，行前请以官方渠道为准。",
+    "season": "当季（9月底–10月）: 白天 18–24°C，早晚约 14°C，偶有阵雨；日落约 18:40–19:10；仍是旺季，热门景点建议 9 点开门即到。"
+  },
+  "GROUPS": {
+    "solo": {
+      "label": "独自旅行",
+      "icon": "🧍",
+      "desc": "一个人，灵活自由"
+    },
+    "couple": {
+      "label": "情侣/二人",
+      "icon": "💑",
+      "desc": "二人同行"
+    },
+    "family": {
+      "label": "亲子家庭",
+      "icon": "👨‍👩‍👧",
+      "desc": "带 6–12 岁孩子"
+    },
+    "elderly": {
+      "label": "带老人同行",
+      "icon": "👴",
+      "desc": "三代同行/老人体力有限"
+    },
+    "friends": {
+      "label": "朋友结伴",
+      "icon": "🧑‍🤝‍🧑",
+      "desc": "3–6 人好友团"
+    }
+  },
+  "PACE": {
+    "relaxed": {
+      "label": "轻松",
+      "icon": "🐢",
+      "hours": 6,
+      "desc": "睡到自然醒，每天 2-3 个点"
+    },
+    "standard": {
+      "label": "标准",
+      "icon": "🚶",
+      "hours": 8,
+      "desc": "主流玩法，每天 3-5 个点"
+    },
+    "packed": {
+      "label": "特种",
+      "icon": "⚡",
+      "hours": 9.5,
+      "desc": "起早贪黑，每天 4-6 个点"
+    }
+  },
+  "INTERESTS": {
+    "history": {
+      "label": "历史人文",
+      "icon": "🏛️",
+      "tag": "历史"
+    },
+    "food": {
+      "label": "美食",
+      "icon": "🍖",
+      "tag": "美食"
+    },
+    "photo": {
+      "label": "摄影",
+      "icon": "📷",
+      "tag": "摄影"
+    },
+    "kids": {
+      "label": "亲子",
+      "icon": "🧒",
+      "tag": "亲子"
+    }
+  },
+  "HOTELS": {
+    "sultanahmet": {
+      "label": "老城区（苏丹阿赫迈特/锡尔凯吉）"
+    },
+    "beyoglu": {
+      "label": "加拉塔/独立大街/塔克西姆"
+    },
+    "kadikoy": {
+      "label": "亚洲岸（卡德柯伊）"
+    },
+    "undecided": {
+      "label": "还没定"
+    }
+  },
+  "MEAL_TIERS": {
+    "economy": {
+      "label": "经济（街头小吃为主）",
+      "perDay": [
+        180,
+        320
+      ]
+    },
+    "comfort": {
+      "label": "舒适（正餐+甜品）",
+      "perDay": [
+        380,
+        650
+      ]
+    },
+    "premium": {
+      "label": "高端（含 meyhane 大餐）",
+      "perDay": [
+        800,
+        1400
+      ]
+    }
+  },
+  "TRANSPORT_MODES": {
+    "public": {
+      "label": "全程公共交通",
+      "note": "电车/地铁/渡轮按人头计费"
+    },
+    "mix": {
+      "label": "出租+公交混合",
+      "note": "4 人一车核算"
+    }
+  },
+  "DISTRICTS": {
+    "sultanahmet": {
+      "name": "苏丹阿赫迈特老城",
+      "icon": "🕌"
+    },
+    "eminonu": {
+      "name": "艾米诺努/锡尔凯吉",
+      "icon": "⛴️"
+    },
+    "beyoglu": {
+      "name": "贝伊奥卢/加拉塔/塔克西姆",
+      "icon": "🗼"
+    },
+    "bosphorus_eu": {
+      "name": "海峡欧洲岸（多尔玛/奥塔科伊/贝西克塔斯）",
+      "icon": "🌊"
+    },
+    "golden_horn": {
+      "name": "金角湾（埃于普/巴拉特/迷你土耳其）",
+      "icon": "🏞️"
+    },
+    "asian": {
+      "name": "亚洲岸（于斯屈达尔/卡德柯伊/恰姆勒加）",
+      "icon": "🌅"
+    },
+    "islands": {
+      "name": "王子群岛",
+      "icon": "🚲"
+    },
+    "florya": {
+      "name": "西郊弗洛里亚",
+      "icon": "🐠"
+    }
+  },
+  "TRANSIT": {
+    "sultanahmet|eminonu": {
+      "m": 8,
+      "how": "🚋 T1 电车",
+      "note": "Sultanahmet→Eminönü 3 站"
+    },
+    "sultanahmet|beyoglu": {
+      "m": 25,
+      "how": "🚋+🚡 T1→Kabataş 换 F1",
+      "note": "或打车约 20 分钟"
+    },
+    "sultanahmet|bosphorus_eu": {
+      "m": 25,
+      "how": "🚋 T1 至 Kabataş",
+      "note": "多尔玛宫就在站旁"
+    },
+    "sultanahmet|golden_horn": {
+      "m": 15,
+      "how": "🚕 打车",
+      "note": "去巴拉特/科拉教堂"
+    },
+    "sultanahmet|asian": {
+      "m": 35,
+      "how": "⛴️ Eminönü 渡轮→于斯屈达尔",
+      "note": "船程 20 分钟+步行"
+    },
+    "sultanahmet|florya": {
+      "m": 40,
+      "how": "🚇 Marmaray",
+      "note": "Sirkeci 站上车直达 Florya"
+    },
+    "sultanahmet|islands": {
+      "m": 100,
+      "how": "⛴️ 王子群岛渡轮",
+      "note": "Eminönü/Kabataş 出发 1.5–2 小时"
+    },
+    "eminonu|beyoglu": {
+      "m": 15,
+      "how": "🚶 过加拉塔桥+Tünel",
+      "note": "步行观景约 25 分钟"
+    },
+    "eminonu|bosphorus_eu": {
+      "m": 20,
+      "how": "🚋 T1",
+      "note": "直达 Kabataş"
+    },
+    "eminonu|golden_horn": {
+      "m": 12,
+      "how": "🚕 打车",
+      "note": "或公交沿金角湾"
+    },
+    "eminonu|asian": {
+      "m": 30,
+      "how": "⛴️ 渡轮",
+      "note": "Eminönü→于斯屈达尔/卡德柯伊 20-25 分钟"
+    },
+    "eminonu|florya": {
+      "m": 35,
+      "how": "🚇 Marmaray",
+      "note": "Sirkeci 上车"
+    },
+    "eminonu|islands": {
+      "m": 110,
+      "how": "⛴️ 渡轮",
+      "note": "Eminönü 出发班次最多"
+    },
+    "beyoglu|bosphorus_eu": {
+      "m": 15,
+      "how": "🚡 F1 缆索+🚶",
+      "note": "Taksim→Kabataş 3 分钟"
+    },
+    "beyoglu|golden_horn": {
+      "m": 20,
+      "how": "🚕 打车",
+      "note": ""
+    },
+    "beyoglu|asian": {
+      "m": 35,
+      "how": "⛴️ Karaköy 渡轮",
+      "note": "Karaköy→卡德柯伊 20 分钟"
+    },
+    "beyoglu|florya": {
+      "m": 50,
+      "how": "🚇 Marmaray+打车",
+      "note": "较远，建议打车"
+    },
+    "beyoglu|islands": {
+      "m": 100,
+      "how": "⛴️ 渡轮",
+      "note": "Kabataş 出发快速渡轮 55 分钟"
+    },
+    "bosphorus_eu|asian": {
+      "m": 20,
+      "how": "⛴️ 渡轮",
+      "note": "Beşiktaş↔于斯屈达尔 15 分钟"
+    },
+    "bosphorus_eu|golden_horn": {
+      "m": 20,
+      "how": "🚕 打车",
+      "note": "沿海峡南下"
+    },
+    "bosphorus_eu|florya": {
+      "m": 55,
+      "how": "🚕 打车",
+      "note": "较远"
+    },
+    "bosphorus_eu|islands": {
+      "m": 90,
+      "how": "⛴️ 渡轮",
+      "note": "Kabataş 出发最近"
+    },
+    "golden_horn|asian": {
+      "m": 40,
+      "how": "🚕 打车",
+      "note": "或回市中心换渡轮"
+    },
+    "golden_horn|florya": {
+      "m": 45,
+      "how": "🚕 打车",
+      "note": ""
+    },
+    "golden_horn|islands": {
+      "m": 115,
+      "how": "⛴️ 渡轮",
+      "note": "需回 Eminönü 换乘"
+    },
+    "asian|florya": {
+      "m": 45,
+      "how": "🚇 Marmaray",
+      "note": "穿海峡直达"
+    },
+    "asian|islands": {
+      "m": 75,
+      "how": "⛴️ 渡轮",
+      "note": "于斯屈达尔也有群岛班次"
+    },
+    "florya|islands": {
+      "m": 125,
+      "how": "⛴️ 渡轮",
+      "note": "不推荐同日安排"
+    }
+  },
+  "ATTRACTIONS": [
+    {
+      "id": "hagia-sophia",
+      "name": "圣索菲亚大教堂",
+      "local": "Ayasofya",
+      "district": "sultanahmet",
+      "category": "mosque",
+      "desc": "1500 年历史的\"世纪之眼\"，拜占庭穹顶+奥斯曼宣礼塔同体，伊斯坦布尔的代名词。",
+      "duration": 1.5,
+      "bestTime": "morning",
+      "closedDays": [],
+      "price": [
+        1100,
+        1300
+      ],
+      "priceNote": "外国游客约 25–30 欧元（上层画廊），礼拜者地面层免费",
+      "groupFit": {
+        "solo": 5,
+        "couple": 5,
+        "family": 3,
+        "elderly": 4,
+        "friends": 4
+      },
+      "priority": 3,
+      "tags": [
+        "历史",
+        "摄影"
+      ],
+      "transport": "🚋 T1 电车 Sultanahmet 站步行 2 分钟",
+      "tips": [
+        "9:00 开门即进可避开团客；游客动线为上层画廊（看马赛克最佳），地面层为礼拜区不开放",
+        "每日 5 次礼拜时段（每次约 30-60 分钟）游客暂停入场，正午前后最挤"
+      ]
+    },
+    {
+      "id": "blue-mosque",
+      "name": "蓝色清真寺",
+      "local": "Sultanahmet Camii",
+      "district": "sultanahmet",
+      "category": "mosque",
+      "desc": "两万余片伊兹尼克蓝瓷贴满内壁，六根宣礼塔的皇家清真寺，与圣索菲亚隔广场相望。",
+      "duration": 1,
+      "bestTime": "morning",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费",
+      "groupFit": {
+        "solo": 4,
+        "couple": 5,
+        "family": 4,
+        "elderly": 5,
+        "friends": 4
+      },
+      "priority": 3,
+      "tags": [
+        "历史",
+        "摄影"
+      ],
+      "transport": "🚋 T1 电车 Sultanahmet 站步行 3 分钟",
+      "tips": [
+        "严格着装：遮肩膝、女性包头巾（门口可借）、所有人脱鞋入殿",
+        "每日 5 次礼拜及周五正午对游客关闭，出门前看当天礼拜时间表"
+      ]
+    },
+    {
+      "id": "topkapi",
+      "name": "托普卡帕宫（老皇宫）",
+      "local": "Topkapı Sarayı",
+      "district": "sultanahmet",
+      "category": "palace",
+      "desc": "奥斯曼帝国 400 年权力中枢，先知斗篷与 86 克拉钻石都在这里，须留半天。",
+      "duration": 3.5,
+      "bestTime": "morning",
+      "closedDays": [
+        2
+      ],
+      "price": [
+        2000,
+        3500
+      ],
+      "priceNote": "旧宫约 2000–3500 里拉，后宫展区需另购票",
+      "groupFit": {
+        "solo": 4,
+        "couple": 4,
+        "family": 3,
+        "elderly": 3,
+        "friends": 4
+      },
+      "priority": 3,
+      "tags": [
+        "历史"
+      ],
+      "transport": "🚋 T1 电车 Gülhane 站步行 5 分钟",
+      "tips": [
+        "一开门先冲珍宝馆和圣物馆避排队",
+        "院内步行量大且多石板路，带老人/幼儿量力而行；租讲解器或提前做功课体验翻倍"
+      ]
+    },
+    {
+      "id": "basilica-cistern",
+      "name": "地下水宫",
+      "local": "Basilica Sarnıcı",
+      "district": "sultanahmet",
+      "category": "museum",
+      "desc": "336 根罗马石柱撑起的地下蓄水池，倒置的美杜莎头像，最出片的\"水底宫殿\"。",
+      "duration": 1,
+      "bestTime": "any",
+      "closedDays": [],
+      "openLate": true,
+      "price": [
+        800,
+        1300
+      ],
+      "priceNote": "周末票价更高，夜场开放至较晚",
+      "groupFit": {
+        "solo": 4,
+        "couple": 5,
+        "family": 4,
+        "elderly": 4,
+        "friends": 4
+      },
+      "priority": 2,
+      "tags": [
+        "历史",
+        "摄影"
+      ],
+      "transport": "🚋 T1 电车 Sultanahmet 站步行 4 分钟",
+      "tips": [
+        "地面湿滑反光，穿防滑鞋",
+        "排在正午最热的时段正合适——地下恒温凉爽"
+      ]
+    },
+    {
+      "id": "grand-bazaar",
+      "name": "大巴扎",
+      "local": "Kapalıçarşı",
+      "district": "eminonu",
+      "category": "bazaar",
+      "desc": "4000 家店铺的 15 世纪迷宫，金饰、灯具、地毯、软糖——全世界最大的室内老集市。",
+      "duration": 2.5,
+      "bestTime": "morning",
+      "closedDays": [
+        0
+      ],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费进入",
+      "groupFit": {
+        "solo": 3,
+        "couple": 4,
+        "family": 3,
+        "elderly": 4,
+        "friends": 5
+      },
+      "priority": 3,
+      "tags": [
+        "购物",
+        "美食"
+      ],
+      "transport": "🚋 T1 电车 Beyazıt-Kapalıçarşı 站即达",
+      "tips": [
+        "周日整体闭市",
+        "开价水分大，从三成开始砍；觉得不想买就礼貌说 \"Hayır, teşekkürler\"（不，谢谢）",
+        "内部像迷宫，记下入口编号（如 Gate 1）"
+      ]
+    },
+    {
+      "id": "spice-bazaar",
+      "name": "香料市场（埃及市场）",
+      "local": "Mısır Çarşısı",
+      "district": "eminonu",
+      "category": "bazaar",
+      "desc": "L 形小集市，红茶、香料、软糖和坚果的香味全城最浓，买伴手礼首选。",
+      "duration": 1.2,
+      "bestTime": "morning",
+      "closedDays": [
+        0
+      ],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费；周日多数店铺休息",
+      "groupFit": {
+        "solo": 4,
+        "couple": 4,
+        "family": 4,
+        "elderly": 5,
+        "friends": 4
+      },
+      "priority": 2,
+      "tags": [
+        "购物",
+        "美食"
+      ],
+      "transport": "🚋 T1 电车 Eminönü 站步行 3 分钟",
+      "tips": [
+        "试吃再买是惯例，红茶和软糖可还价",
+        "毗邻新清真寺（Yeni Cami），可顺路；傍晚收摊早，建议上午去"
+      ]
+    },
+    {
+      "id": "suleymaniye",
+      "name": "苏莱曼尼耶清真寺",
+      "local": "Süleymaniye Camii",
+      "district": "eminonu",
+      "category": "mosque",
+      "desc": "建筑大师希南的巅峰之作，金角湾畔的露台是全城最佳免费观景台之一。",
+      "duration": 1,
+      "bestTime": "morning",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费",
+      "groupFit": {
+        "solo": 5,
+        "couple": 5,
+        "family": 4,
+        "elderly": 5,
+        "friends": 4
+      },
+      "priority": 2,
+      "tags": [
+        "历史",
+        "摄影"
+      ],
+      "transport": "🚋 T1 至 Eminönü 后步行上坡 10 分钟，或直接打车到门口",
+      "tips": [
+        "后院露台俯瞰金角湾与加拉塔桥，日落前来更美",
+        "游客少、氛围安静，正午来避暑歇脚也好；周五正午礼拜时段游客止步"
+      ]
+    },
+    {
+      "id": "hippodrome",
+      "name": "苏丹阿赫迈特广场（古赛马场）",
+      "local": "Hipodrom",
+      "district": "sultanahmet",
+      "category": "neighborhood",
+      "desc": "罗马竞技场遗址：埃及方尖碑、青铜蛇柱、德国喷泉一字排开，串联老城的露天走廊。",
+      "duration": 0.7,
+      "bestTime": "any",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费",
+      "groupFit": {
+        "solo": 4,
+        "couple": 4,
+        "family": 4,
+        "elderly": 5,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "历史"
+      ],
+      "transport": "🚋 T1 电车 Sultanahmet 站出站即是",
+      "tips": [
+        "无需专程前往，与蓝寺/圣索菲亚/地下水宫天然串联",
+        "广场周边有有轨老电车经过，拍照出片"
+      ]
+    },
+    {
+      "id": "tiem",
+      "name": "土耳其与伊斯兰艺术博物馆",
+      "local": "Türk ve İslam Eserleri Müzesi",
+      "district": "sultanahmet",
+      "category": "museum",
+      "desc": "塞尔柱与奥斯曼地毯、书法、细密画的顶级收藏，2023 年翻修后重开。",
+      "duration": 1.5,
+      "bestTime": "morning",
+      "closedDays": [],
+      "price": [
+        500,
+        900
+      ],
+      "priceNote": "",
+      "groupFit": {
+        "solo": 5,
+        "couple": 4,
+        "family": 2,
+        "elderly": 4,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "历史"
+      ],
+      "transport": "🚋 T1 Sultanahmet 站，蓝色清真寺对面",
+      "tips": [
+        "蓝寺排队过长时来这边正好错峰",
+        "展馆有空调，夏季/雨天避暑避雨两相宜"
+      ]
+    },
+    {
+      "id": "archaeology",
+      "name": "伊斯坦布尔考古博物馆",
+      "local": "İstanbul Arkeoloji Müzeleri",
+      "district": "sultanahmet",
+      "category": "museum",
+      "desc": "亚历山大石棺与Sidon王族石棺群——古典考古迷的圣殿，就在托普卡帕宫第一院内。",
+      "duration": 2.5,
+      "bestTime": "morning",
+      "closedDays": [],
+      "price": [
+        800,
+        1200
+      ],
+      "priceNote": "部分展厅长年翻修中，开放范围行前查官网",
+      "groupFit": {
+        "solo": 5,
+        "couple": 3,
+        "family": 3,
+        "elderly": 3,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "历史"
+      ],
+      "transport": "🚋 T1 Gülhane 站步行 5 分钟",
+      "tips": [
+        "与托普卡帕宫同天安排顺路",
+        "历史迷可留 2-3 小时；一般游客看石棺主馆即可"
+      ]
+    },
+    {
+      "id": "gulhane",
+      "name": "居尔哈内公园",
+      "local": "Gülhane Parkı",
+      "district": "sultanahmet",
+      "category": "viewpoint",
+      "desc": "老城最大的绿地，奥斯曼帝国的第一个公园，海崖步道可眺望海峡，带娃放电胜地。",
+      "duration": 1,
+      "bestTime": "afternoon",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费",
+      "groupFit": {
+        "solo": 3,
+        "couple": 4,
+        "family": 5,
+        "elderly": 4,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "亲子",
+        "摄影"
+      ],
+      "transport": "🚋 T1 Gülhane 站出站即达",
+      "tips": [
+        "托普卡帕逛累后的天然休息区，有长椅与咖啡亭",
+        "4 月郁金香花季最美；公园北口出来就是电车与海峡景观路"
+      ]
+    },
+    {
+      "id": "great-palace-mosaics",
+      "name": "大皇宫马赛克博物馆",
+      "local": "Büyük Saray Mozaikleri",
+      "district": "sultanahmet",
+      "category": "museum",
+      "desc": "拜占庭大皇宫的地面马赛克（猎虎、牧童、格里芬），小而精的一站。",
+      "duration": 0.8,
+      "bestTime": "any",
+      "closedDays": [],
+      "price": [
+        300,
+        600
+      ],
+      "priceNote": "",
+      "groupFit": {
+        "solo": 4,
+        "couple": 4,
+        "family": 3,
+        "elderly": 4,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "历史"
+      ],
+      "transport": "🚋 T1 Sultanahmet 站，蓝色清真寺背后集市街",
+      "tips": [
+        "1 小时内看完，适合排队间隙塞进行程",
+        "上方玻璃栈道视角看马赛克最清楚"
+      ]
+    },
+    {
+      "id": "galata-tower",
+      "name": "加拉达塔",
+      "local": "Galata Kulesi",
+      "district": "beyoglu",
+      "category": "viewpoint",
+      "desc": "1348 年的热那亚石塔，360° 俯瞰金角湾、老城与博斯普鲁斯，日落机位天花板。",
+      "duration": 1.5,
+      "bestTime": "evening",
+      "closedDays": [],
+      "price": [
+        1000,
+        1400
+      ],
+      "priceNote": "",
+      "groupFit": {
+        "solo": 4,
+        "couple": 5,
+        "family": 3,
+        "elderly": 2,
+        "friends": 4
+      },
+      "priority": 2,
+      "tags": [
+        "摄影",
+        "历史"
+      ],
+      "transport": "🚋 T1 Karaköy 站，换 Tünel 或爬坡步行 12 分钟",
+      "tips": [
+        "日落前 1 小时到，排队 30-60 分钟是常态",
+        "内有电梯但登顶仍需爬一段台阶，婴儿车/轮椅不便；恐高可只拍外观+在周边露台咖啡馆看景"
+      ]
+    },
+    {
+      "id": "istiklal",
+      "name": "独立大街 & 塔克西姆广场",
+      "local": "İstiklal Caddesi",
+      "district": "beyoglu",
+      "category": "neighborhood",
+      "desc": "百万级人流的历史步行街：红色怀旧小火车、百年甜品店、花厅拱廊与夜晚的酒吧街。",
+      "duration": 3,
+      "bestTime": "evening",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费（吃喝另计）",
+      "groupFit": {
+        "solo": 5,
+        "couple": 5,
+        "family": 4,
+        "elderly": 4,
+        "friends": 5
+      },
+      "priority": 2,
+      "tags": [
+        "购物",
+        "美食",
+        "摄影"
+      ],
+      "transport": "🚡 F1 缆索 Kabataş→Taksim，或 Tünel 到街南端",
+      "tips": [
+        "傍晚至夜间氛围最佳；扒手高发区，背包前置",
+        "支巷值得钻：Çiçek Pasajı 花厅、Sahne 街、 Balık Pazarı 鱼市"
+      ]
+    },
+    {
+      "id": "karakoy",
+      "name": "卡拉柯伊街区",
+      "local": "Karaköy",
+      "district": "beyoglu",
+      "category": "neighborhood",
+      "desc": "老港口变身潮流街区：百年baklava名店、咖啡馆、涂鸦墙与加拉塔桥上的钓鱼人。",
+      "duration": 2.5,
+      "bestTime": "morning",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费",
+      "groupFit": {
+        "solo": 4,
+        "couple": 4,
+        "family": 4,
+        "elderly": 4,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "美食",
+        "摄影"
+      ],
+      "transport": "🚋 T1 Karaköy 站，或渡轮 Karaköy 码头",
+      "tips": [
+        "早餐/甜点去 Karaköy Güllüoğlu（果仁蜜饼名店）",
+        "过加拉塔桥到 Eminönü 一侧看满桥钓客+喂海鸥，是免费的名场面"
+      ]
+    },
+    {
+      "id": "istanbul-modern",
+      "name": "伊斯坦布尔现代艺术馆",
+      "local": "İstanbul Modern",
+      "district": "beyoglu",
+      "category": "museum",
+      "desc": "2022 年落成的新馆（普利兹克奖事务所 Renzo Piano 设计），顶层咖啡看海峡。",
+      "duration": 1.5,
+      "bestTime": "any",
+      "closedDays": [],
+      "price": [
+        400,
+        800
+      ],
+      "priceNote": "",
+      "groupFit": {
+        "solo": 5,
+        "couple": 4,
+        "family": 3,
+        "elderly": 3,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "摄影"
+      ],
+      "transport": "🚋 T1 Tophane 站步行 3 分钟",
+      "tips": [
+        "雨天/暴晒天的完美备选",
+        "与加拉达塔、Karaköy 顺路串联"
+      ]
+    },
+    {
+      "id": "dolmabahce",
+      "name": "多尔玛巴赫切宫（新皇宫）",
+      "local": "Dolmabahçe Sarayı",
+      "district": "bosphorus_eu",
+      "category": "palace",
+      "desc": "奥斯曼帝国末期的欧式奢华皇宫，4.5 吨水晶吊灯挂在大厅，凯末尔在此度过最后时光。",
+      "duration": 2.5,
+      "bestTime": "morning",
+      "closedDays": [
+        1,
+        4
+      ],
+      "price": [
+        900,
+        2000
+      ],
+      "priceNote": "分馆售票（主殿/后宫），联票约翻倍；周一、周四闭馆",
+      "groupFit": {
+        "solo": 4,
+        "couple": 4,
+        "family": 3,
+        "elderly": 4,
+        "friends": 4
+      },
+      "priority": 2,
+      "tags": [
+        "历史"
+      ],
+      "transport": "🚋 T1 Kabataş 站步行 5 分钟",
+      "tips": [
+        "必须跟馆内固定路线走，不能自由行进",
+        "海边铁门立面是经典机位；与奥塔科伊串联成海峡半日线"
+      ]
+    },
+    {
+      "id": "ortakoy",
+      "name": "奥塔科伊街区",
+      "local": "Ortaköy",
+      "district": "bosphorus_eu",
+      "category": "neighborhood",
+      "desc": "海峡大桥下的水边小广场：清真寺+大桥同框机位，烤土豆 kumpir 的发源地。",
+      "duration": 2,
+      "bestTime": "afternoon",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费；kumpir 约 150-300 里拉",
+      "groupFit": {
+        "solo": 3,
+        "couple": 5,
+        "family": 4,
+        "elderly": 4,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "美食",
+        "摄影"
+      ],
+      "transport": "🚌 贝西克塔斯转公交/打车，或海峡观光航线 Ortaköy 码头",
+      "tips": [
+        "必吃 kumpir（黄油芝士随便加的巨型烤土豆）和 ortaköy waffle",
+        "黄昏时清真寺、大桥、海峡同框，摄影黄金机位"
+      ]
+    },
+    {
+      "id": "bosphorus-cruise",
+      "name": "博斯普鲁斯海峡游船",
+      "local": "Boğaz Turu",
+      "district": "eminonu",
+      "category": "waterfront",
+      "desc": "两大洲之间的船行：宫殿、堡垒、海峡别墅与跨洲大桥从两侧掠过——来伊斯坦布尔必做的一件事。",
+      "duration": 2.5,
+      "bestTime": "afternoon",
+      "closedDays": [],
+      "price": [
+        300,
+        700
+      ],
+      "priceNote": "官方 Şehir Hatları 全程往返约 2-3 小时；短程圈约 1.5 小时更便宜",
+      "groupFit": {
+        "solo": 4,
+        "couple": 5,
+        "family": 5,
+        "elderly": 5,
+        "friends": 5
+      },
+      "priority": 3,
+      "tags": [
+        "摄影",
+        "亲子"
+      ],
+      "transport": "⛴️ Eminönü 官方码头（认准 Şehir Hatları 绿白船）",
+      "tips": [
+        "选官方 Şehir Hatları 班船，性价比远高于揽客的私人游船",
+        "海上风大备薄外套；喂海鸥买块 simit，船尾拍照最出片；傍晚班次有日落"
+      ]
+    },
+    {
+      "id": "commuter-ferry",
+      "name": "海峡通勤渡轮体验",
+      "local": "Vapur",
+      "district": "eminonu",
+      "category": "waterfront",
+      "desc": "本地人的日常过海方式，也是游客心中\"性价比最高的游船\"——20 分钟，几十里拉，海鸥满天。",
+      "duration": 1,
+      "bestTime": "any",
+      "closedDays": [],
+      "price": [
+        30,
+        50
+      ],
+      "priceNote": "刷伊斯坦布尔卡，约 30-50 里拉/次",
+      "groupFit": {
+        "solo": 4,
+        "couple": 5,
+        "family": 5,
+        "elderly": 5,
+        "friends": 4
+      },
+      "priority": 2,
+      "tags": [
+        "亲子",
+        "摄影"
+      ],
+      "transport": "⛴️ Eminönü↔于斯屈达尔/卡德柯伊，随时上船",
+      "tips": [
+        "买一杯红茶或一块 simit 上船喂海鸥，是伊斯坦布尔的仪式感",
+        "通勤渡轮不用提前买票刷卡即上；站在船尾背对海鸥拍照最出片"
+      ]
+    },
+    {
+      "id": "maidens-tower",
+      "name": "少女塔",
+      "local": "Kız Kulesi",
+      "district": "asian",
+      "category": "viewpoint",
+      "desc": "海峡中孤礁上的白色小塔，千年灯塔/隔离站/传说的主角，明信片常客。",
+      "duration": 1,
+      "bestTime": "afternoon",
+      "closedDays": [],
+      "price": [
+        0,
+        800
+      ],
+      "priceNote": "于斯屈达尔岸边免费观景；登塔票价政策多变，行前确认",
+      "groupFit": {
+        "solo": 4,
+        "couple": 5,
+        "family": 4,
+        "elderly": 4,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "摄影"
+      ],
+      "transport": "⛴️ 渡轮至于斯屈达尔，海岸公园步行即达",
+      "tips": [
+        "岸边海岸公园是经典机位，日落时塔身镀金",
+        "可与于斯屈达尔老城、贝勒贝伊宫组成亚洲岸半日线"
+      ]
+    },
+    {
+      "id": "uskudar",
+      "name": "于斯屈达尔老城",
+      "local": "Üsküdar",
+      "district": "asian",
+      "category": "neighborhood",
+      "desc": "老城对岸的\"本地人亚洲\"：希南建的 Mihrimah 清真寺、百年茶馆与无游客的街巷。",
+      "duration": 2,
+      "bestTime": "afternoon",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费",
+      "groupFit": {
+        "solo": 4,
+        "couple": 4,
+        "family": 4,
+        "elderly": 4,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "美食",
+        "摄影"
+      ],
+      "transport": "⛴️ Eminönü 渡轮 20 分钟直达",
+      "tips": [
+        "海岸茶馆点杯红茶看对岸老城天际线",
+        "想快节奏可只留 1 小时拍少女塔即走"
+      ]
+    },
+    {
+      "id": "beylerbeyi",
+      "name": "贝勒贝伊宫",
+      "local": "Beylerbeyi Sarayı",
+      "district": "asian",
+      "category": "palace",
+      "desc": "海峡亚洲岸的夏宫，接待过欧仁妮皇后与奥地利皇后，花园凉台正对海峡。",
+      "duration": 1.5,
+      "bestTime": "morning",
+      "closedDays": [
+        1,
+        4
+      ],
+      "price": [
+        500,
+        1000
+      ],
+      "priceNote": "周一、周四闭馆；内部须跟导览批次",
+      "groupFit": {
+        "solo": 3,
+        "couple": 4,
+        "family": 3,
+        "elderly": 4,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "历史"
+      ],
+      "transport": "⛴️ 于斯屈达尔转公交/打车 10 分钟",
+      "tips": [
+        "规模小于两大宫但游客极少，体验清净",
+        "与于斯屈达尔、少女塔同线安排"
+      ]
+    },
+    {
+      "id": "camlica",
+      "name": "恰姆勒加山 & 大清真寺",
+      "local": "Çamlıca Tepesi",
+      "district": "asian",
+      "category": "viewpoint",
+      "desc": "亚洲岸制高点：全新观景塔 360° 俯瞰全城，山下是土耳其最大的恰姆勒加大清真寺。",
+      "duration": 2.5,
+      "bestTime": "afternoon",
+      "closedDays": [],
+      "price": [
+        400,
+        800
+      ],
+      "priceNote": "观景塔收费，清真寺免费",
+      "groupFit": {
+        "solo": 3,
+        "couple": 4,
+        "family": 4,
+        "elderly": 5,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "摄影"
+      ],
+      "transport": "🚕 打车上下最方便（公交班次少）",
+      "tips": [
+        "晴天能同时看到马尔马拉海与雪山（冬季）",
+        "清真寺地下有超大服务区，女式长袍入口可借"
+      ]
+    },
+    {
+      "id": "kadikoy-moda",
+      "name": "卡德柯伊 & 莫达海滨",
+      "local": "Kadıköy & Moda",
+      "district": "asian",
+      "category": "neighborhood",
+      "desc": "本地人的生活主场：百年市场、安纳托利亚家常菜馆、酒吧街与 Moda 海边日落步道。",
+      "duration": 3,
+      "bestTime": "evening",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费（吃喝另计）",
+      "groupFit": {
+        "solo": 5,
+        "couple": 4,
+        "family": 4,
+        "elderly": 3,
+        "friends": 5
+      },
+      "priority": 2,
+      "tags": [
+        "美食",
+        "摄影"
+      ],
+      "transport": "⛴️ Karaköy/Eminönü 渡轮至卡德柯伊，或 Marmaray",
+      "tips": [
+        "午餐吃 Çiya Sofrası（安纳托利亚失传菜谱名店），市场里买腌橄榄与pickle汁",
+        "Moda 海岸步道看日落+怀旧电车；周日有跳蚤市场；夜晚酒吧街是年轻人主场"
+      ]
+    },
+    {
+      "id": "fener-balat",
+      "name": "费内尔-巴拉特彩色街区",
+      "local": "Fener & Balat",
+      "district": "golden_horn",
+      "category": "neighborhood",
+      "desc": "希腊/犹太老社区：彩色坡屋、古董店与东正教牧首座堂，摄影师私藏的\"小布拉诺\"。",
+      "duration": 2.5,
+      "bestTime": "morning",
+      "closedDays": [],
+      "price": [
+        0,
+        0
+      ],
+      "priceNote": "免费",
+      "groupFit": {
+        "solo": 4,
+        "couple": 5,
+        "family": 2,
+        "elderly": 2,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "摄影",
+        "历史"
+      ],
+      "transport": "🚕 打车至巴拉特广场，或公交沿金角湾",
+      "tips": [
+        "坡陡路窄石板滑，穿好走的鞋；带老人不建议",
+        "早晨光线柔和且店未开，最适合拍照；35 号彩色台阶是地标"
+      ]
+    },
+    {
+      "id": "pierre-loti",
+      "name": "埃于普 & 皮埃尔·洛蒂山缆车",
+      "local": "Eyüpsultan & Pierre Loti",
+      "district": "golden_horn",
+      "category": "viewpoint",
+      "desc": "坐缆车登顶金角湾全景，山顶咖啡馆因法国作家皮埃尔·洛蒂而名，脚下是朝圣胜地埃于普。",
+      "duration": 2,
+      "bestTime": "evening",
+      "closedDays": [],
+      "price": [
+        50,
+        150
+      ],
+      "priceNote": "缆车往返约 50-150 里拉",
+      "groupFit": {
+        "solo": 4,
+        "couple": 5,
+        "family": 5,
+        "elderly": 4,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "摄影",
+        "亲子"
+      ],
+      "transport": "🚕 打车至埃于普缆车站，或 T5 电车/公交",
+      "tips": [
+        "日落时分缆车+全景的组合性价比极高",
+        "埃于普清真寺为朝圣地，周五极挤且着装要求严格，非穆斯林游客请保持安静"
+      ]
+    },
+    {
+      "id": "miniaturok",
+      "name": "迷你土耳其公园",
+      "local": "Miniatürk",
+      "district": "golden_horn",
+      "category": "viewpoint",
+      "desc": "1:25 微缩的土耳其全境名胜：从圣索菲亚到特洛伊木马一口气看全，孩子的快乐老家。",
+      "duration": 2,
+      "bestTime": "afternoon",
+      "closedDays": [],
+      "price": [
+        500,
+        800
+      ],
+      "priceNote": "",
+      "groupFit": {
+        "solo": 2,
+        "couple": 3,
+        "family": 5,
+        "elderly": 4,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "亲子"
+      ],
+      "transport": "🚕 打车约 15 分钟（金角湾畔），或公交 47/47E",
+      "tips": [
+        "与皮埃尔·洛蒂山同方向，打车 10 分钟串联",
+        "园内有小型游乐区与免费遥控船池，玩足 2 小时没问题"
+      ]
+    },
+    {
+      "id": "rahmi-koc",
+      "name": "拉赫米·科奇工业博物馆",
+      "local": "Rahmi M. Koç Müzesi",
+      "district": "golden_horn",
+      "category": "museum",
+      "desc": "土耳其首富的工业收藏：能进舱的潜艇、飞机、老爷车与蒸汽火车，亲子体验天花板。",
+      "duration": 2.5,
+      "bestTime": "morning",
+      "closedDays": [],
+      "price": [
+        700,
+        1200
+      ],
+      "priceNote": "",
+      "groupFit": {
+        "solo": 3,
+        "couple": 3,
+        "family": 5,
+        "elderly": 4,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "亲子",
+        "历史"
+      ],
+      "transport": "🚕 打车至金角湾 Hasköy，或公交",
+      "tips": [
+        "潜艇排队进舱，一开门先去",
+        "馆区大，有复古电车接驳；咖啡厅由老船坞改建"
+      ]
+    },
+    {
+      "id": "istanbul-aquarium",
+      "name": "伊斯坦布尔水族馆",
+      "local": "İstanbul Akvaryum",
+      "district": "florya",
+      "category": "museum",
+      "desc": "欧洲最大主题水族馆之一：走隧道穿海底，从黑海一路\"游\"到红海，亲子雨天首选。",
+      "duration": 2.5,
+      "bestTime": "any",
+      "closedDays": [],
+      "price": [
+        800,
+        1400
+      ],
+      "priceNote": "儿童票约为成人一半",
+      "groupFit": {
+        "solo": 2,
+        "couple": 3,
+        "family": 5,
+        "elderly": 4,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "亲子"
+      ],
+      "transport": "🚇 Marmaray Florya 站步行 10 分钟，或打车",
+      "tips": [
+        "馆外就是海边公园与商场，午饭可顺路解决",
+        "距离老城约 40 分钟，适合半天安排或雨天替换"
+      ]
+    },
+    {
+      "id": "buyukada",
+      "name": "王子群岛·大岛",
+      "local": "Büyükada",
+      "district": "islands",
+      "category": "neighborhood",
+      "desc": "马尔马拉海上的无机动车小岛：维多利亚老宅、松林海岸与双人自行车，一秒切换度假模式。",
+      "duration": 7,
+      "bestTime": "morning",
+      "closedDays": [],
+      "fullDay": true,
+      "price": [
+        130,
+        300
+      ],
+      "priceNote": "往返渡轮约 130-300 里拉（快速渡轮更贵），自行车另租",
+      "groupFit": {
+        "solo": 3,
+        "couple": 5,
+        "family": 5,
+        "elderly": 3,
+        "friends": 5
+      },
+      "priority": 2,
+      "tags": [
+        "亲子",
+        "摄影",
+        "美食"
+      ],
+      "transport": "⛴️ Kabataş 快速渡轮 55 分钟 / Eminönü 大船 1.5-2 小时",
+      "tips": [
+        "占满一整天，出发别晚于上午 10 点",
+        "环岛租双人/四人自行车，或坐电动观光车（山顶修道院坡道体力活）",
+        "避开周日本地人出游高峰；注意返程末班船时间（夏季约 23 点后，春秋提早）"
+      ]
+    },
+    {
+      "id": "hamam",
+      "name": "土耳其浴体验",
+      "local": "Hamam",
+      "district": "beyoglu",
+      "category": "experience",
+      "desc": "在大理石圆顶下搓澡、拉丝泡沫、起泡泡——500 年清洁仪式，走累之后的终极犒赏。",
+      "duration": 2.5,
+      "bestTime": "afternoon",
+      "closedDays": [],
+      "price": [
+        2000,
+        4500
+      ],
+      "priceNote": "历史浴场搓澡+泡泡套餐区间，男女分区或分时段",
+      "groupFit": {
+        "solo": 4,
+        "couple": 5,
+        "family": 2,
+        "elderly": 3,
+        "friends": 4
+      },
+      "priority": 1,
+      "tags": [
+        "美食",
+        "摄影"
+      ],
+      "transport": "老城选 Çemberlitaş（1584 年），卡拉柯伊选 Kılıç Ali Paşa（希南作）",
+      "tips": [
+        "6 岁以下幼儿不适宜；饭后 1 小时再去，高血压者谨慎高温房",
+        "可自备泳衣或用一次性内裤；下午高峰人多，上午/晚间更清净"
+      ]
+    },
+    {
+      "id": "chora",
+      "name": "科拉教堂（卡里耶）",
+      "local": "Kariye / Chora",
+      "district": "golden_horn",
+      "category": "museum",
+      "desc": "拜占庭马赛克与湿壁画的最高杰作——\"万物之主\"基督像穹顶与圣母生平长卷，艺术史的孤品。",
+      "duration": 1.5,
+      "bestTime": "morning",
+      "closedDays": [],
+      "price": [
+        0,
+        600
+      ],
+      "priceNote": "2024 年起以清真寺身份开放，马赛克参观区收费政策多变，行前务必确认",
+      "groupFit": {
+        "solo": 5,
+        "couple": 4,
+        "family": 2,
+        "elderly": 3,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "历史",
+        "摄影"
+      ],
+      "transport": "🚕 打车至 Edirnekapı 城墙段，与费内-巴拉特串联",
+      "tips": [
+        "政策多变——出发前查一次开放与购票方式",
+        "内部仍按清真寺礼仪：着装保守、礼拜时段止步"
+      ]
+    },
+    {
+      "id": "rumeli-hisari",
+      "name": "鲁梅利堡垒",
+      "local": "Rumeli Hisarı",
+      "district": "bosphorus_eu",
+      "category": "viewpoint",
+      "desc": "1452 年为封锁海峡而建的巨型要塞，爬上城墙就能俯瞰博斯普鲁斯最窄处。",
+      "duration": 1.5,
+      "bestTime": "afternoon",
+      "closedDays": [],
+      "price": [
+        400,
+        700
+      ],
+      "priceNote": "开放日行前确认（时常整修）",
+      "groupFit": {
+        "solo": 4,
+        "couple": 4,
+        "family": 3,
+        "elderly": 2,
+        "friends": 3
+      },
+      "priority": 1,
+      "tags": [
+        "历史",
+        "摄影"
+      ],
+      "transport": "🚕 打车直达，或贝西克塔斯转公交",
+      "tips": [
+        "城墙上上下下全是台阶，体力要求高，带老人慎选",
+        "七塔楼中最高的一座视野最佳；春有花季音乐会"
+      ]
+    }
+  ],
+  "FOODS": [
+    {
+      "name": "土耳其早餐（Kahvaltı）",
+      "where": "奇汉吉尔 Van Kahvaltı Evi 等早餐名店",
+      "district": "beyoglu",
+      "price": [
+        250,
+        450
+      ],
+      "noDinner": true,
+      "note": "十几个小碟：奶酪、蜂蜜+凝脂、橄榄、煎蛋——中午都不饿"
+    },
+    {
+      "name": "鱼面包 Balık Ekmek",
+      "where": "艾米诺努加拉塔桥下",
+      "district": "eminonu",
+      "price": [
+        100,
+        180
+      ],
+      "note": "现烤鲭鱼+生菜洋葱塞进面包，站着吃才对味"
+    },
+    {
+      "name": "果仁蜜饼 Baklava",
+      "where": "卡拉柯伊 Güllüoğlu（1843 传承名店）",
+      "district": "beyoglu",
+      "price": [
+        150,
+        300
+      ],
+      "noDinner": true,
+      "noLunch": true,
+      "note": "开心果铺满、一口爆浆；配无糖红茶解腻"
+    },
+    {
+      "name": "湿汉堡 Islak Burger",
+      "where": "塔克西姆 Kızılkayalar",
+      "district": "beyoglu",
+      "price": [
+        80,
+        150
+      ],
+      "note": "泡在蒜香番茄汁里的深夜传奇，别看卖相，好吃"
+    },
+    {
+      "name": "烤土豆 Kumpir",
+      "where": "奥塔科伊",
+      "district": "bosphorus_eu",
+      "price": [
+        150,
+        300
+      ],
+      "note": "巨型烤土豆+黄油芝士+随便加料，奥塔柯伊是发源地"
+    },
+    {
+      "name": "历史名店肉丸 Köfte",
+      "where": "老城 Tarihi Sultanahmet Köftecisi",
+      "district": "sultanahmet",
+      "price": [
+        200,
+        400
+      ],
+      "note": "1920 年老店，烤肉丸+烩豆汤+饭布丁三板斧"
+    },
+    {
+      "name": "安纳托利亚家常菜",
+      "where": "卡德柯伊 Çiya Sofrası",
+      "district": "asian",
+      "price": [
+        200,
+        400
+      ],
+      "note": "《世界吃旅》捧红的\"失传菜谱\"博物馆级餐馆"
+    },
+    {
+      "name": "土耳其披萨 Pide / Lahmacun",
+      "where": "全城 Pideci",
+      "district": "any",
+      "price": [
+        100,
+        250
+      ],
+      "note": "船形烤饼 pide 与薄脆辣肉饼 lahmacun，挤柠檬汁配欧芹"
+    },
+    {
+      "name": "İskender 烤肉",
+      "where": "全城 İskenderçi",
+      "district": "any",
+      "price": [
+        200,
+        400
+      ],
+      "note": "切片旋转烤肉+番茄酱+黄油+酸奶+烤饼，布尔萨名吃"
+    },
+    {
+      "name": "土耳其软糖 Lokum",
+      "where": "贝伊奥卢 Hacı Bekir（1777 年）",
+      "district": "beyoglu",
+      "price": [
+        150,
+        500
+      ],
+      "noDinner": true,
+      "noLunch": true,
+      "note": "伴手礼首选：玫瑰/开心果/柠檬口味，称重买散装更划算"
+    },
+    {
+      "name": "库内费 Künefe",
+      "where": "全城甜品店",
+      "district": "any",
+      "price": [
+        100,
+        250
+      ],
+      "noDinner": true,
+      "noLunch": true,
+      "note": "铁盘现烤芝士细面+糖浆，趁热拉丝"
+    },
+    {
+      "name": "Meyhane 小酒馆晚餐",
+      "where": "贝伊奥卢/卡德柯伊酒馆街",
+      "district": "beyoglu",
+      "price": [
+        400,
+        900
+      ],
+      "noLunch": true,
+      "note": "冷前菜+炸鱿鱼+拉克酒（Rakı），6 人以上建议订位"
+    },
+    {
+      "name": "贻贝饭 Midye Dolma",
+      "where": "街头小推车",
+      "district": "any",
+      "price": [
+        30,
+        80
+      ],
+      "noDinner": true,
+      "note": "本地人最爱的深夜一口鲜；肠胃敏感者慎试"
+    },
+    {
+      "name": "红茶/咖啡/Salep",
+      "where": "全城茶馆",
+      "district": "any",
+      "price": [
+        30,
+        100
+      ],
+      "noDinner": true,
+      "noLunch": true,
+      "note": "郁金香杯红茶是社交货币；冬饮 Salep 热奶昔撒肉桂"
+    },
+    {
+      "name": "Simit 芝麻圈 & 土耳其冰淇淋",
+      "where": "街头 Simit 车 / Maraş 冰淇淋店",
+      "district": "any",
+      "price": [
+        50,
+        150
+      ],
+      "noDinner": true,
+      "noLunch": true,
+      "note": "早上 5 里拉的 simit 就茶；冰淇淋小哥会逗你玩"
+    }
+  ],
+  "TRANSPORT_GUIDE": [
+    {
+      "icon": "💳",
+      "title": "伊斯坦布尔卡 Istanbulkart（一切交通的钥匙）",
+      "items": [
+        "机场出口、所有地铁/电车站、渡轮码头的黄色售卡机可购：卡押金约 100-150 里拉（不退），机器支持英文界面，纸币/部分机器支持信用卡",
+        "便利店和售卡机都能充值（Yükle），建议一次充 200-400 里拉",
+        "票价约 30-50 里拉/次（电车/地铁/公交通用），渡轮约 30-50 里拉；2 小时内换乘有折扣",
+        "一张匿名卡可连续刷多次带多人进站（折扣卡除外）——同伴可以共用一张",
+        "大巴/渡轮都刷同一张卡；查询线路用 Google Maps 或 Moovit 即可，不用下载市政 App"
+      ]
+    },
+    {
+      "icon": "✈️",
+      "title": "伊斯坦布尔机场 IST 进城（欧洲岸新机场）",
+      "items": [
+        "🚕 打车/接机：45-75 分钟到老城，约 900-1500 里拉（深夜+机场附加费），走官方出租车通道或用 App 叫车",
+        "🚌 Havaist 机场大巴：至塔克西姆约 45-90 分钟，约 150-250 里拉，刷伊斯坦布尔卡；行李架充足",
+        "🚇 地铁 M11：至 Gayrettepe 换 M2 进城，最便宜（约 30-50 里拉）但换乘多，大件行李不推荐",
+        "老城（苏丹阿赫迈特）离机场约 45 公里，深夜航班建议提前订接机"
+      ]
+    },
+    {
+      "icon": "🛬",
+      "title": "萨比哈·格克琴机场 SAW 进城（亚洲岸）",
+      "items": [
+        "🚌 Havabus 机场大巴：至卡德柯伊约 60-90 分钟，约 90-150 里拉；之后换乘渡轮去欧洲岸（顺便看海峡，一举两得）",
+        "🚕 打车到老城：跨城约 60-90 分钟、1000-1800 里拉，易堵车",
+        "🚇 地铁 M4 进城后换乘；亚洲岸住宿的话 SAW 反而比 IST 近",
+        "廉价航空（飞马等）多停 SAW，订票时看清机场代码"
+      ]
+    },
+    {
+      "icon": "🚋",
+      "title": "游客主干线：T1 电车 & 地铁 & Marmaray",
+      "items": [
+        "T1 电车是游客命脉：Bağcılar↔Kabataş，途经 Beyazıt(大巴扎)→Eminönü(渡轮/香料市场)→Sultanahmet(圣索菲亚/蓝寺)→Gülhane(老皇宫)→Karaköy(加拉塔)→Kabataş(新皇宫/换 F1)",
+        "M2 地铁：塔克西姆↔Şişhane(卡拉柯伊上方)↔商业区 Levent",
+        "Marmaray 穿海峡通勤铁路：Yenikapı↔于斯屈达尔↔卡德柯伊，想快不晕船就坐它",
+        "F1 缆索 Kabataş↔塔克西姆（3 分钟爬坡）；F2 百年缆索 Tünel 卡拉柯伊↔贝伊奥卢",
+        "早晚高峰（8:30-9:30、17:30-19:00）T1 非常挤，注意扒手"
+      ]
+    },
+    {
+      "icon": "⛴️",
+      "title": "渡轮网络（最幸福的交通方式）",
+      "items": [
+        "Eminönü↔于斯屈达尔 20 分钟 / ↔卡德柯伊 25 分钟，Karaköy↔卡德柯伊 20 分钟，Beşiktaş↔于斯屈达尔 15 分钟——刷伊斯坦布尔卡随上随下",
+        "王子群岛：Kabataş 快速渡轮 55 分钟 / Eminönü 大船 1.5-2 小时（班次见 şehirhatlari.istanbul 或 Google Maps）",
+        "金角湾 T5 电车沿湾而行，去埃于普/迷你土耳其方向",
+        "喂海鸥的 simit 在码头上船前买好；工作日渡轮人少，周末本地出行人多"
+      ]
+    },
+    {
+      "icon": "🚕",
+      "title": "出租车 & 网约车（重点防坑）",
+      "items": [
+        "一律用 App 叫车：BiTaksi / Uber（在土耳其接的是正规出租车）/ 官方 iTaksi，避免路招",
+        "上车确认计价器（Taksimetre）已启动；夜间与过海峡大桥有附加费属正常，看计价器即可",
+        "常见坑：不打表谈价、绕路、\"没零钱\"不找、掉包假币——备小面额现金，付前看清纸币",
+        "出租车 4 人一车（含副驾），5-6 人需两辆；后备箱一般只放 2 个大行李箱",
+        "短途 2-3 公里司机可能嫌近拒载，属常见现象，换一辆或改公交"
+      ]
+    },
+    {
+      "icon": "🚡",
+      "title": "特色交通（顺便就是景点）",
+      "items": [
+        "埃于普缆车（Teleferik）：登皮埃尔·洛蒂山看金角湾全景",
+        "独立大街怀旧红色小火车（Nostaljik Tramvay）：塔克西姆↔Tünel，几站复古浪漫",
+        "博斯普鲁斯观光船（Şehir Hatları 全程线）：2-3 小时往返海峡深处",
+        "自行车：王子群岛大岛环岛骑行（岛上无机动车）"
+      ]
+    }
+  ],
+  "ROUTE_TABLE": [
+    [
+      "苏丹阿赫迈特 → 塔克西姆",
+      "T1 至 Kabataş 换 F1 缆索",
+      "约 25 分钟",
+      "30-60 里拉"
+    ],
+    [
+      "苏丹阿赫迈特 → 卡德柯伊(亚洲岸)",
+      "Eminönü 渡轮→卡德柯伊",
+      "约 30 分钟",
+      "30-50 里拉"
+    ],
+    [
+      "苏丹阿赫迈特 → IST 机场",
+      "🚕 打车直达 / 🚌 Havaist 大巴至塔克西姆再换乘",
+      "打车 45-75 分钟；大巴 60-100 分钟",
+      "打车约 900-1500 里拉；大巴 150-250 里拉"
+    ],
+    [
+      "加拉塔 → 于斯屈达尔",
+      "T1 到 Eminönü 换渡轮 / Karaköy 渡轮",
+      "约 25 分钟",
+      "30-50 里拉"
+    ],
+    [
+      "老城 → 王子群岛大岛",
+      "Kabataş 快速渡轮 / Eminönü 大船",
+      "55 分钟–2 小时",
+      "130-300 里拉往返"
+    ],
+    [
+      "老城 → 迷你土耳其/埃于普",
+      "🚕 打车 / 🚌 公交 47 系",
+      "打车 15-20 分钟；公交 30-45 分钟",
+      "打车约 200-350 里拉；公交 30-50 里拉"
+    ],
+    [
+      "塔克西姆 → 卡德柯伊(夜生活)",
+      "Karaköy 渡轮（末班较晚）",
+      "约 30 分钟",
+      "30-50 里拉"
+    ],
+    [
+      "于斯屈达尔 → 恰姆勒加山",
+      "🚕 打车（公交班次少）",
+      "约 15 分钟",
+      "约 150-250 里拉"
+    ]
+  ],
+  "TIPS": [
+    {
+      "icon": "🛂",
+      "title": "签证与入境",
+      "points": [
+        "中国普通护照：提前在 evisa.gov.tr 办电子签（单次入境、停留≤30 天，费用约 50-60 美元区间），出签快但仍建议提前一周",
+        "入境通常看：护照+电子签打印件/截图、返程票；偶有询问住宿订单",
+        "以土耳其官方 e-Visa 网站为准，谨防第三方代签网站加价"
+      ]
+    },
+    {
+      "icon": "💰",
+      "title": "货币与支付",
+      "points": [
+        "货币：土耳其里拉 ₺（TRY）；汇率波动极大（2026 年中约 1 欧元≈45-50 里拉），随用随取、别囤大额",
+        "机场兑换点汇率差，市区找 \"Döviz\" 兑换店（金价柜台旁的更靠谱）；大额消费优先刷卡（Visa/Master 通达）",
+        "街边摊、小巴、部分门票需现金；大商场/机场部分支持银联与支付宝，别指望全覆盖"
+      ]
+    },
+    {
+      "icon": "📶",
+      "title": "电话卡与上网",
+      "points": [
+        "三大运营商 Turkcell（黄）/Vodafone（红）/Türk Telekom（蓝），游客卡约 30-60 欧元起步，机场柜台办理要护照",
+        "更省钱的路线：国内提前买土耳其 eSIM（多天套餐几十元），落地即用",
+        "机场、酒店、餐馆 Wi-Fi 普遍；离线地图（Google Maps 提前下载区域）+ 本工具离线打开，基本可脱网游玩"
+      ]
+    },
+    {
+      "icon": "🕌",
+      "title": "清真寺礼仪与礼拜时段",
+      "points": [
+        "着装：遮肩与膝、女性包头巾（入口常免费提供）、所有人脱鞋存袋",
+        "每日 5 次礼拜各约 30-60 分钟游客止步；周五正午主麻日管制最严，别把清真寺排在周五 11:30-14:00",
+        "斋月（2027 年约 2 月中-3 月中）白天餐饮受限较少但日落开斋炮响时餐馆爆满——你 9-10 月出行不受影响",
+        "殿内不喧哗、不摆祈祷姿势拍照、避开正在礼拜的人正面拍",
+        "婴幼儿着装通常不强制，给大孩子备条易穿脱的外套/围巾即可"
+      ]
+    },
+    {
+      "icon": "🦺",
+      "title": "安全与常见骗术",
+      "points": [
+        "整体治安尚可，但 T1 电车、独立大街、大巴扎是扒手重灾区——背包前背、手机别放外袋",
+        "鞋童刷鞋碰瓷：\"掉落的鞋刷\"、\"请你喝茶后高价账单\"、塔克西姆酒吧天价账单（尤其陌生人搭讪带你去的地方）",
+        "出租车见上文专条；夜店街区（塔克西姆侧巷）深夜独行女性建议打车",
+        "紧急电话 112（土耳其统一急救/报警）；外交部全球领保热线 +86-10-12308，中国驻伊斯坦布尔总领馆信息以官网为准"
+      ]
+    },
+    {
+      "icon": "🌦️",
+      "title": "季节与穿衣",
+      "points": [
+        "9 月底-10 月：白天 18-24°C、早晚 14°C 左右，偶有阵雨——短袖+薄外套+一件防雨最稳妥",
+        "伊斯坦布尔多坡多石板路，每日步数轻松 2 万+：好走的运动鞋比什么都重要",
+        "4-5 月（郁金香）与 9-11 月是最佳季；7-8 月湿热+顶流排队地狱；冬季湿冷但游客少、包场拍穹顶"
+      ]
+    },
+    {
+      "icon": "🧒",
+      "title": "带孩子出行",
+      "points": [
+        "人流密集处（T1 电车/独立大街/大巴扎）给孩子戴联系卡或在口袋放写有手机号的卡片；约定走散后就地等待",
+        "婴儿车在老城很吃力：石板路+坡道+台阶多，加拉达塔/巴拉特/王子群岛上山路不建议推车，6 岁以下建议背带",
+        "儿童票现场口径：多数博物馆/宫殿 0-6 岁免票、7-12 岁半价（需出示护照核年龄）；渡轮儿童票约为成人半价",
+        "土耳其餐馆普遍欢迎孩子；宝宝椅在大商场餐厅有，小馆子没有",
+        "儿童常备药自带：退烧药/电解质液本地药房有售但沟通成本高；夏季注意防晒补水"
+      ]
+    },
+    {
+      "icon": "🍽️",
+      "title": "吃喝与日常",
+      "points": [
+        "自来水不建议直饮，买瓶装水（大瓶超市约 10-20 里拉）",
+        "小费文化：餐馆 5-10% 或凑整；出租车不必；酒店行李员 20-50 里拉",
+        "餐馆午市套餐（lokanta 称重菜）最划算；酒水贵，拉克酒和本地啤酒 Efes 是常选项",
+        "厕所多收费（约 5-15 里拉），随身备零钱；清真寺与商场有免费厕所"
+      ]
+    },
+    {
+      "icon": "🔌",
+      "title": "时差/插座/语言",
+      "points": [
+        "时差：土耳其 UTC+3，比北京时间慢 5 小时",
+        "插座：欧标 C/F 圆孔 230V，国内两脚圆插需转换头（酒店多可借）",
+        "语言：旅游区英语通行；学三句就够——Merhaba（你好）/ Teşekkürler（谢谢）/ Ne kadar?（多少钱）",
+        "周五中午热门清真寺周边管制、周日大巴扎/香料市场歇市——排行程记得绕开"
+      ]
+    },
+    {
+      "icon": "🎫",
+      "title": "门票与省钱",
+      "points": [
+        "热门景点票价随通胀跳涨，本工具价格仅为区间参考，行前以官方/现场为准",
+        "圣索菲亚、托普卡帕等支持官网/官方 App 预售，旺季能省 30-60 分钟排队",
+        "存在博物馆联票（Müze İstanbul 等），走\"宫殿+博物馆\"密集路线时可现场咨询购票处是否划算",
+        "免费的高分项别错过：蓝色清真寺、苏莱曼尼耶、加拉塔桥、渡轮、各观景露台"
+      ]
+    }
+  ],
+  "QUICK_FACTS": [
+    {
+      "icon": "🛂",
+      "k": "签证",
+      "v": "电子签 evisa.gov.tr，约 50-60 美元"
+    },
+    {
+      "icon": "💰",
+      "k": "货币",
+      "v": "里拉 ₺，波动大，随用随取"
+    },
+    {
+      "icon": "⏰",
+      "k": "时差",
+      "v": "比北京慢 5 小时（UTC+3）"
+    },
+    {
+      "icon": "🗣️",
+      "k": "语言",
+      "v": "土耳其语，旅游区英语够用"
+    },
+    {
+      "icon": "🔌",
+      "k": "插座",
+      "v": "欧标 C/F 圆孔 230V"
+    },
+    {
+      "icon": "🚨",
+      "k": "紧急",
+      "v": "112 ｜ 领保热线 +86-10-12308"
+    },
+    {
+      "icon": "💳",
+      "k": "交通卡",
+      "v": "伊斯坦布尔卡，全场景通用"
+    },
+    {
+      "icon": "✈️",
+      "k": "机场",
+      "v": "IST 欧洲岸 / SAW 亚洲岸，看清代码"
+    }
+  ],
+  "HOWTO": [
+    {
+      "icon": "1️⃣",
+      "text": "「景点库」筛选出你感兴趣、适合你人群的景点，看清游玩时长和怎么去"
+    },
+    {
+      "icon": "2️⃣",
+      "text": "「行程规划」填入天数/人群/节奏/日期，一键生成按地理分区的逐日行程+预算"
+    },
+    {
+      "icon": "3️⃣",
+      "text": "「交通指南」+「实用贴士」落地前过一遍：伊斯坦布尔卡、机场进城、清真寺礼仪、防骗"
+    }
+  ],
+  "TOP_PICKS": [
+    "hagia-sophia",
+    "blue-mosque",
+    "topkapi",
+    "basilica-cistern",
+    "grand-bazaar",
+    "suleymaniye",
+    "galata-tower",
+    "bosphorus-cruise",
+    "istiklal",
+    "buyukada"
+  ],
+  "CATEGORIES": {
+    "mosque": "清真寺",
+    "palace": "宫殿",
+    "museum": "博物馆/古迹",
+    "bazaar": "集市购物",
+    "waterfront": "游船/海滨",
+    "viewpoint": "观景/公园",
+    "neighborhood": "街区漫步",
+    "experience": "特色体验"
+  },
+  "id": "istanbul",
+  "country": "土耳其",
+  "city": "伊斯坦布尔",
+  "badge": "内置完整包",
+  "currency": {
+    "name": "里拉",
+    "perEur": 48
+  },
+  "overview": "一城横跨欧亚两洲，罗马、拜占庭、奥斯曼 1600 年帝都。老城清真寺与宫殿、海峡游船、独立大街烟火气、亚洲岸本地生活——建议至少安排 3-5 天。",
+  "transportSubtitle": "一张伊斯坦布尔卡走全城；票价为近似区间（里拉）。",
+  "religiousLabel": "清真寺",
+  "transitPerRide": [
+    30,
+    50
+  ],
+  "taxiPerRide": [
+    250,
+    450
+  ],
+  "taxiPerCar": 4,
+  "transportNotes": {
+    "public": "公共交通按人头计费，人数增加线性增长；但一张匿名伊斯坦布尔卡可连刷多人同行。"
+  },
+  "budgetNotes": {
+    "childFree": "0-6 岁儿童在多数博物馆/宫殿免票（部分渡轮/游船仍计儿童票），以现场为准。",
+    "childHalf": "7-12 岁多数场馆享半价或儿童票，本估算按半价计入。",
+    "senior": "老年优惠仅限土耳其公民，外国游客 65+ 按全价——预算别按国内习惯打折。",
+    "group6": "6 人以上餐馆就餐建议提前订位（尤其 meyhane 与网红店）。"
+  },
+  "districtLunchFallback": {
+    "islands": {
+      "name": "岛上简餐（烤鱼三明治/gozleme/冰淇淋）",
+      "where": "大岛码头一带随手解决",
+      "price": [
+        100,
+        250
+      ]
+    }
+  }
+};
+  (global.CityPacks = global.CityPacks || {})[pack.id] = pack;
+  if (typeof module !== 'undefined' && module.exports) module.exports = pack;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ===== js/packs/tokyo.js ===== */
+/* 城市包：东京（精简示例包 —— 证明"城市包"架构通用性）
+ * 数据从简、价格为 2025-26 日元近似区间，正式使用请核对官方渠道。
+ */
+(function (global) {
+  const pack = {
+    id: 'tokyo', country: '日本', city: '东京',
+    badge: '示例精简包',
+    currency: { name: '日元', perEur: 170 },
+    overview: '超级都会的秩序与次文化并存：浅草的老东京、涩谷新宿的人潮、银座的精致、台场的未来感——建议 3-5 天；市内靠 JR 山手线 + 地铁 + 一张 IC 卡就能高效移动。',
+    transportSubtitle: '一人一张交通 IC 卡（Suica/PASMO）；价格为近似区间（日元）。',
+    religiousLabel: '寺庙/神社',
+    transitPerRide: [130, 200],
+    taxiPerRide: [1500, 2500],
+    taxiPerCar: 4,
+    transportNotes: {
+      public: '一人一张交通 IC 卡（机场/车站自助机可购），同一张卡不能连刷多人——人数=卡数；电车按里程计费。',
+    },
+    budgetNotes: {
+      childFree: '6 岁以下多数铁路/场馆免费，以现场为准。',
+      childHalf: '小学生多数场馆享"児童料金"约半价，本估算按半价计入。',
+      senior: '日本对外国游客基本无老年折扣，65+ 按成人票价计。',
+      group6: '6 人以上就餐建议提前订位（人气店可用官方预约或 TableAll）。',
+    },
+    districtLunchFallback: {},
+    META: {
+      title: '东京旅行攻略工具',
+      subtitle: '游玩时长 · 人群适配 · 交通方式 · 行程生成 · 预算估算',
+      disclaimer: '票价/汇率为 2025-26 日元近似区间，行前请以官方渠道为准。',
+      season: '当季（10 月）：白天 15-22°C、早晚偏凉，偶有台风尾部降雨——薄外套+好走的鞋；红叶要到 11 月中下旬。',
+    },
+    GROUPS: {
+      solo:    { label: '独自旅行', icon: '🧍', desc: '一个人，灵活自由' },
+      couple:  { label: '情侣/二人', icon: '💑', desc: '二人同行' },
+      family:  { label: '亲子家庭', icon: '👨‍👩‍👧', desc: '带 6–12 岁孩子' },
+      elderly: { label: '带老人同行', icon: '👴', desc: '三代同行/老人体力有限' },
+      friends: { label: '朋友结伴', icon: '🧑‍🤝‍🧑', desc: '3–6 人好友团' },
+    },
+    PACE: {
+      relaxed:  { label: '轻松', icon: '🐢', hours: 6,  desc: '睡到自然醒，每天 2-3 个点' },
+      standard: { label: '标准', icon: '🚶', hours: 8,  desc: '主流玩法，每天 3-5 个点' },
+      packed:   { label: '特种', icon: '⚡', hours: 9.5, desc: '起早贪黑，每天 4-6 个点' },
+    },
+    INTERESTS: {
+      history: { label: '历史人文', icon: '⛩️', tag: '历史' },
+      food:    { label: '美食', icon: '🍜', tag: '美食' },
+      photo:   { label: '摄影', icon: '📷', tag: '摄影' },
+      kids:    { label: '亲子', icon: '🧒', tag: '亲子' },
+    },
+    HOTELS: {
+      shinjuku:   { label: '新宿（交通枢纽，去哪都快）' },
+      asakusa:    { label: '浅草/上野（老城氛围，性价比高）' },
+      ginza:      { label: '银座/丸之内（购物与商务区）' },
+      undecided:  { label: '还没定' },
+    },
+    MEAL_TIERS: {
+      economy: { label: '经济（拉面/定食/便利店）', perDay: [2000, 3500] },
+      comfort: { label: '舒适（正餐+居酒屋）',       perDay: [4000, 8000] },
+      premium: { label: '高端（寿司 omakase/和牛）', perDay: [10000, 20000] },
+    },
+    TRANSPORT_MODES: {
+      public: { label: '全程公共交通', note: '电车/地铁按里程计费' },
+      mix:    { label: '出租+电车混合', note: '4 人一车核算' },
+    },
+    DISTRICTS: {
+      asakusa:    { name: '浅草/上野（老东京）', icon: '🏮' },
+      ginza:      { name: '银座/丸之内/筑地·丰洲', icon: '🏬' },
+      shinjuku:   { name: '新宿/代代木', icon: '🌆' },
+      shibuya:    { name: '涩谷/原宿/表参道', icon: '🚦' },
+      akihabara:  { name: '秋叶原/神田', icon: '🎮' },
+      bay:        { name: '台场/丰洲湾岸', icon: '🌊' },
+    },
+    TRANSIT: {
+      'asakusa|ginza':     { m: 20, how: '🚇 银座线直达', note: '浅草→银座约 20 分钟' },
+      'asakusa|shinjuku':  { m: 35, how: '🚇 银座线→JR 中央线', note: '' },
+      'asakusa|shibuya':   { m: 40, how: '🚇 银座线直达', note: '终点涩谷' },
+      'asakusa|akihabara': { m: 15, how: '🚇 筑波快线/银座线', note: '浅草→秋叶原 5-10 分钟' },
+      'asakusa|bay':       { m: 25, how: '🚇 都营浅草线→百合鸥', note: '去台场/丰洲' },
+      'ginza|shinjuku':    { m: 25, how: '🚇 丸之内线直达', note: '' },
+      'ginza|shibuya':     { m: 20, how: '🚇 银座线直达', note: '' },
+      'ginza|akihabara':   { m: 12, how: '🚇 银座线→日比谷线', note: '或步行+地铁' },
+      'ginza|bay':         { m: 15, how: '🚇 百合鸥线', note: '新桥→台场' },
+      'shinjuku|shibuya':  { m: 10, how: '🚄 JR 山手线', note: '两站直达' },
+      'shinjuku|akihabara':{ m: 25, how: '🚄 JR 中央线→总武线', note: '' },
+      'shinjuku|bay':      { m: 35, how: '🚇 都营大江户线→百合鸥', note: '' },
+      'shibuya|akihabara': { m: 25, how: '🚄 JR 山手线', note: '' },
+      'shibuya|bay':       { m: 25, how: '🚇 银座线→百合鸥', note: '' },
+      'akihabara|bay':     { m: 25, how: '🚇 日比谷线→百合鸥', note: '' },
+    },
+    ATTRACTIONS: [
+      { id: 'sensoji', name: '浅草寺·仲见世商店街', local: '浅草寺 Sensōji', district: 'asakusa', category: 'mosque',
+        desc: '东京最古老的寺庙：雷门大灯笼、五重塔与 250 米参道商店街，老东京的门面。',
+        duration: 1.5, bestTime: 'morning', closedDays: [], price: [0, 0], priceNote: '免费',
+        groupFit: { solo: 5, couple: 5, family: 4, elderly: 5, friends: 4 }, priority: 3,
+        tags: ['历史', '摄影', '美食'], transport: '🚇 银座线/都营浅草线 浅草站步行 1 分钟',
+        tips: ['8 点前到雷门基本没人，拍照黄金时段', '参道买人形烧/炸馒头；本堂前大香炉的烟可以"扇"向自己祈福', '抽签 100 日元，抽到"凶"就把签绑在架子上留下'] },
+      { id: 'skytree', name: '东京晴空塔', local: '東京スカイツリー', district: 'asakusa', category: 'viewpoint',
+        desc: '634 米日本第一高塔，与浅草一站之隔，展望台看整个关东平原。',
+        duration: 2, bestTime: 'evening', openLate: true, closedDays: [], price: [2100, 3400],
+        priceNote: '展望台分两段，线上预售有优惠',
+        groupFit: { solo: 4, couple: 5, family: 4, elderly: 4, friends: 4 }, priority: 2,
+        tags: ['摄影', '亲子'], transport: '🚇 浅草站步行 15 分钟 / 押上站直达',
+        tips: ['日落前后登塔一次看两种景色，黄昏时段票最抢手', '恐高/带老人可选低段展望台（350m）', '塔下 Solamachi 商场适合买伴手礼'] },
+      { id: 'ueno-museum', name: '上野公园&东京国立博物馆', local: '上野公園·東京国立博物館', district: 'asakusa', category: 'museum',
+        desc: '东京最大博物馆：日本考古与美术的国宝级收藏，公园里还有动物园和多家美术馆。',
+        duration: 3, bestTime: 'morning', closedDays: [1], price: [620, 1000], priceNote: '周一闭馆（节假日顺延）',
+        groupFit: { solo: 5, couple: 3, family: 4, elderly: 4, friends: 3 }, priority: 1,
+        tags: ['历史', '亲子'], transport: '🚄 JR 山手线/银座线 上野站步行 3 分钟',
+        tips: ['本馆 2 楼按时代走一遍就是半部日本史；周五夜场延长时人更少', '上野动物园的熊猫是孩子的心头好（另购票）'] },
+      { id: 'meiji-jingu', name: '明治神宫&原宿表参道', local: '明治神宮', district: 'shibuya', category: 'mosque',
+        desc: '十万棵树的城市森林神宫，出来就是原宿竹下通与表参道——一次集齐传统与潮流。',
+        duration: 2, bestTime: 'morning', closedDays: [], price: [0, 0], priceNote: '免费（宝物殿另购票）',
+        groupFit: { solo: 4, couple: 5, family: 4, elderly: 5, friends: 4 }, priority: 2,
+        tags: ['历史', '摄影'], transport: '🚄 JR 山手线 原宿站即达',
+        tips: ['参道走大鸟居方向安静肃穆，清晨有巫女和婚礼队伍的概率最高', '出口右转就是竹下通（可丽饼）与表参道（建筑师旗舰店）'] },
+      { id: 'shibuya-cross', name: '涩谷十字路口&忠犬八公像', local: '渋谷スクランブル', district: 'shibuya', category: 'neighborhood',
+        desc: '世界最著名的斑马线：一次绿灯 3000 人对穿。周边 SHIBUYA SKY、109、中心街够逛一晚上。',
+        duration: 2.5, bestTime: 'evening', openLate: true, closedDays: [], price: [0, 0], priceNote: '免费（SHIBUYA SKY 展望台另购约 2000-2500）',
+        groupFit: { solo: 5, couple: 5, family: 4, elderly: 4, friends: 5 }, priority: 3,
+        tags: ['摄影', '购物', '美食'], transport: '🚄 JR 山手线 涩谷站八公口出站即是',
+        tips: ['拍十字路口最佳机位：站前星巴克二楼 / SHIBUYA SKY', '夜晚的中心街+夜涩谷氛围完全不同，适合朋友结伴', 'SHIBUYA SKY 日落票要提前 1-2 周官网抢'] },
+      { id: 'shinjuku-gyoen', name: '新宿御苑', local: '新宿御苑', district: 'shinjuku', category: 'viewpoint',
+        desc: '法式+英式+日式三园合一的皇家庭院，摩天楼群里的巨大绿洲，樱花与红叶名所。',
+        duration: 2, bestTime: 'morning', closedDays: [1], price: [500, 500], priceNote: '周一闭园',
+        groupFit: { solo: 4, couple: 5, family: 5, elderly: 5, friends: 3 }, priority: 1,
+        tags: ['亲子', '摄影'], transport: '🚄 JR 山手线 新宿站步行 10 分钟 / 地铁新宿御苑前站',
+        tips: ['园内禁止酒精但可以野餐，便利店买个饭团进来躺草坪', '与歌舞伎町/思出横丁一街之隔，白天夜晚两种新宿'] },
+      { id: 'kabukicho', name: '新宿歌舞伎町&思出横丁', local: '歌舞伎町·思い出横丁', district: 'shinjuku', category: 'neighborhood',
+        desc: '亚洲最热闹的不夜城：霓虹拱廊、串烧小巷、ゴールデン街的老酒吧——夜东京的代名词。',
+        duration: 2.5, bestTime: 'evening', openLate: true, closedDays: [], price: [0, 0], priceNote: '免费（吃喝另计）',
+        groupFit: { solo: 4, couple: 4, family: 2, elderly: 3, friends: 5 }, priority: 2,
+        tags: ['美食', '摄影'], transport: '🚄 JR 新宿站东口步行 5 分钟',
+        tips: ['思出横丁的串烧店现金为主、位子窄，高峰要等位', '拉客的店不进、标价不明的店不进——认准门口有菜单价目牌的', 'ゴールデン街部分酒吧收桌费/禁止站立，进店前看门口说明'] },
+      { id: 'teamlab', name: 'teamLab Planets TOKYO', local: 'チームラボ プラネッツ', district: 'bay', category: 'museum',
+        desc: '赤脚涉水穿行的数字艺术馆：镜面水池、无限花海、漂浮灯笼——东京最出圈的沉浸体验。',
+        duration: 2, bestTime: 'any', openLate: true, closedDays: [], price: [3200, 4200],
+        priceNote: '需官网指定日期时段预约',
+        groupFit: { solo: 4, couple: 5, family: 5, elderly: 3, friends: 5 }, priority: 2,
+        tags: ['摄影', '亲子'], transport: '🚇 百合鸥线/地铁 丰洲站步行 10 分钟',
+        tips: ['会涉水到膝盖，穿短裤/可卷裤腿，现场发毛巾', '门票指定时段入场，务必提前官网购票（旺季提前 1-2 周）', '手机防水袋可带，拍照是体验的一半'] },
+      { id: 'tsukiji', name: '筑地场外市场', local: '築地場外市場', district: 'ginza', category: 'bazaar',
+        desc: '东京的胃：玉子烧、海鲜丼、金枪鱼串、水果切盘，边走边吃就是一顿早餐加午餐。',
+        duration: 2, bestTime: 'morning', closedDays: [0, 3], price: [0, 0],
+        priceNote: '免费进入（吃喝人均 1500-4000）；多数店铺周日/周三休',
+        groupFit: { solo: 4, couple: 5, family: 4, elderly: 4, friends: 5 }, priority: 2,
+        tags: ['美食'], transport: '🚇 日比谷线 筑地站步行 5 分钟 / 都营大江户线筑地市场站',
+        tips: ['8-10 点最新鲜也最挤，拖箱不便寄存后再来', '周日和多数店铺周三休市，行前确认', '市场内边走边吃为主，部分店有立食位'] },
+      { id: 'ginza-kabuki', name: '银座&歌舞伎座', local: '銀座·歌舞伎座', district: 'ginza', category: 'neighborhood',
+        desc: '百年商业街的橱窗艺术：和光钟楼、GINZA SIX 屋顶花园、老牌百货与米其林密度全城第一。',
+        duration: 3, bestTime: 'afternoon', openLate: true, closedDays: [], price: [0, 0], priceNote: '免费（歌舞伎座一幕见约 1000-2000）',
+        groupFit: { solo: 4, couple: 5, family: 3, elderly: 5, friends: 4 }, priority: 1,
+        tags: ['购物', '美食'], transport: '🚇 银座线/丸之内线/日比谷线 银座站',
+        tips: ['周六周日中午起步行者天国（封街），逛街体验最好', '歌舞伎座"一幕见"适合没看过的人体验一幕（含语音导览）', '伊东屋文具、博品馆玩具店适合买手账和伴手礼'] },
+      { id: 'akihabara', name: '秋叶原电器街', local: '秋葉原', district: 'akihabara', category: 'bazaar',
+        desc: '电器、动漫、游戏与女仆咖啡的世界中心，从免税电器到绝版手办一网打尽。',
+        duration: 2.5, bestTime: 'any', closedDays: [], price: [0, 0], priceNote: '免费',
+        groupFit: { solo: 5, couple: 3, family: 3, elderly: 2, friends: 5 }, priority: 1,
+        tags: ['购物', '亲子'], transport: '🚄 JR 山手线/日比谷线 秋叶原站电器街口',
+        tips: ['周日部分街道封街变步行街，二手相机/游戏店全开', '免税店认准 Tax Free 标志，满 5000 日元免 10% 消费税（当场退税）', '女仆咖啡拉客的不跟，明码标价的店自己选'] },
+      { id: 'palace', name: '皇居东御苑·丸之内', local: '皇居東御苑', district: 'ginza', category: 'viewpoint',
+        desc: '江户城遗址的皇家庄园免费开放：天守台石垣、旧江户城本丸，出来就是丸大厦顶楼免费展望台。',
+        duration: 1.5, bestTime: 'morning', closedDays: [1, 5], price: [0, 0],
+        priceNote: '免费（入园领小票）；周一、周五休园',
+        groupFit: { solo: 4, couple: 4, family: 3, elderly: 4, friends: 3 }, priority: 1,
+        tags: ['历史', '摄影'], transport: '🚇 大手町站步行 5 分钟 / JR 东京站丸之内口',
+        tips: ['与东京站丸之内红砖站房、KITTE 邮便屋顶展望台顺路串联', '周一/周五休园（皇室活动日除外，以官网为准）'] },
+    ],
+    FOODS: [
+      { name: '筑地海鲜丼/寿司', where: '筑地场外市场、丰洲', district: 'ginza', price: [2000, 4500],
+        note: '早上第一口的金枪鱼盖饭，市场直送' },
+      { name: '拉面（豚骨/酱油/味噌）', where: '全城各系名店', district: 'any', price: [1000, 1600],
+        note: '食券机购票、吧台一人一席是常态' },
+      { name: '荞麦面/乌冬', where: '神田·浅草老铺', district: 'any', price: [900, 1500],
+        note: '站着吸溜就对了，天妇罗荞麦最稳' },
+      { name: '唐扬炸鸡·定食屋', where: '全城定食食堂', district: 'any', price: [900, 1400],
+        note: '烤鱼+味噌汤+米饭的"定食"是性价比之王' },
+      { name: '居酒屋串烧·思出横丁', where: '新宿思出横丁/涩谷横丁', district: 'shinjuku', price: [3000, 6000], noLunch: true,
+        note: '烟火气拉满，收店费/お通し(小菜)是惯例' },
+      { name: '和牛烧肉', where: '银座/新宿烧肉店', district: 'ginza', price: [5000, 12000], noLunch: true,
+        note: '午市套餐常常半价，性价比远高于晚市' },
+      { name: '抹茶百汇·和菓子', where: '浅草/表参道甜品店', district: 'shibuya', price: [800, 1800], noLunch: true, noDinner: true,
+        note: '抹茶控的必修课，浅草的鲷鱼烧现烤最好吃' },
+      { name: '便利店早餐&深夜食堂', where: '7-11/全家/罗森', district: 'any', price: [500, 900], noLunch: true, noDinner: true,
+        note: '饭团+三明治+咖啡 500 日元解决，深夜的关东煮是安全感' },
+    ],
+    TRANSPORT_GUIDE: [
+      { icon: '✈️', title: '机场进城（成田 NRT / 羽田 HND）', items: [
+        '羽田 HND（市区最近）：京急/单轨电车 30-40 分钟约 300-500 日元；打车 30-45 分钟约 6000-9000',
+        '成田 NRT（较远）：成田特快 NEX 约 60 分钟 3000 日元；京成 Skyliner 40 分钟约 2600；机场大巴 60-90 分钟约 1300-3200',
+        '深夜航班注意末班车（多数 23-24 点），错过只能打车（成田打车 20000+ 日元）' ] },
+      { icon: '💳', title: '交通 IC 卡（Suica / PASMO）', items: [
+        '机场和主要车站的自助机可购，押金 500 日元（退卡可取回）；iPhone 可直接开数字 Suica',
+        '电车/地铁/公交/便利店通用，按里程计费约 130-200 日元/次，换乘有微折',
+        '一人一卡，不能连刷多人——同行几人就买几张',
+        '儿童 IC 卡（こども用）电车半价，需带护照在人工窗口办理' ] },
+      { icon: '🚄', title: '市内电车与地铁', items: [
+        'JR 山手线是游客命脉环线：新宿/涩谷/上野/秋叶原/东京站全在环上',
+        '地铁 13 条线分属东京 Metro 与都营两家——换乘有时要重新刷卡出站',
+        '访日游客可买 Tokyo Subway Ticket（24/48/72 小时券，约 800/1200/1500 日元），市区密集玩法很划算',
+        '早高峰 7:30-9:00 的山手线/丸之内线极度拥挤，大件行李请避开' ] },
+      { icon: '🚕', title: '出租车（贵但稳）', items: [
+        '起价约 500 日元/1.05km，之后每 255 米约 100 日元；深夜加 2 成',
+        '车门自动开关不要硬掰；后排就坐、不用给小费',
+        '4 人一车（含副驾），5-6 人需两辆；支付宝/微信在部分大车行可用',
+        '市区能用 IC 卡+地铁就别打车——3 公里的路轻松 1500-2500 日元' ] },
+    ],
+    ROUTE_TABLE: [
+      ['浅草 → 涩谷', '银座线直达', '约 40 分钟', '约 200 日元'],
+      ['新宿 → 秋叶原', 'JR 中央线→总武线', '约 25 分钟', '约 210 日元'],
+      ['涩谷 → 台场/丰洲', '银座线→百合鸥线', '约 25 分钟', '约 300 日元'],
+      ['东京站 → 浅草', 'JR→银座线', '约 20 分钟', '约 220 日元'],
+      ['新宿 → 羽田机场', '京急线/单轨电车+山手线', '40-50 分钟', '约 500 日元'],
+      ['市区 → 成田机场', 'NEX / Skyliner', '40-60 分钟', '2600-3200 日元'],
+    ],
+    TIPS: [
+      { icon: '🛂', title: '签证与入境', points: [
+        '中国普通护照赴日需提前办妥日本签证（单次/三年多次/五年多次），通过使馆指定代办机构递交，以出签为准',
+        '入境走 Visit Japan Web 提前填海关/入境申报，生成二维码走快速通道',
+        '护照有效期建议 6 个月以上，机票酒店订单建议备查' ] },
+      { icon: '🙇', title: '礼仪与神社参拜', points: [
+        '神社参拜：鸟居前轻鞠躬→手水舍洗手漱口→二拜二拍手一拜；不要走在参道正中央',
+        '电车內不打电话、不大声交谈；优先席让给老弱',
+        '很多小店只收现金，备 1 万日元零钱；垃圾分类与"边走边吃"因店而异（筑地市场内可以，银座街头不宜）' ] },
+      { icon: '🦺', title: '安全与地震', points: [
+        '治安极好，深夜单身女性步行也相对安全；但钱包手机仍看好',
+        '遇到地震：高层酒店躲桌下护头，震后走楼梯；手机装 Safety tips / 紧急速报 App',
+        '台风季 7-10 月，出行前看天气，电车可能停运' ] },
+      { icon: '🌦️', title: '季节与穿衣', points: [
+        '10 月：白天 15-22°C、早晚 10°C 出头，薄外套必备；偶有台风尾降雨',
+        '红叶 11 月中下旬（东京市区），樱花 3 月底-4 月初',
+        '每天 1.5-2 万步是常态，好走的鞋最重要； formal 场合（高级餐厅/歌舞伎座）避免拖鞋短裤' ] },
+      { icon: '🍽️', title: '吃喝与日常', points: [
+        '消费税 10%（超市食品 8%），标价多为含税价；免税店满 5000 日元退税',
+        '无小费文化；居酒屋的"お通し"开胃小菜费（300-500）是惯例不是坑',
+        '紧急电话 110（警察）/119（急救火警）；中国驻日使馆领保 +86-10-12308',
+        '自来水可直饮；公厕免费且干净，百货公司每层都有' ] },
+    ],
+    QUICK_FACTS: [
+      { icon: '🛂', k: '签证', v: '需提前办日本签证' },
+      { icon: '💰', k: '货币', v: '日元 ¥，现金+IC卡并用' },
+      { icon: '⏰', k: '时差', v: '比北京快 1 小时' },
+      { icon: '🗣️', k: '语言', v: '日语，车站有英文/中文标示' },
+      { icon: '🔌', k: '插座', v: 'A 型双平脚 100V' },
+      { icon: '🚨', k: '紧急', v: '110 警察 / 119 急救' },
+    ],
+    HOWTO: [
+      { icon: '1️⃣', text: '「景点库」筛选出你感兴趣、适合你人群的景点，看清游玩时长和怎么去' },
+      { icon: '2️⃣', text: '「行程规划」填入天数/人群/节奏/日期，一键生成按地理分区的逐日行程+预算' },
+      { icon: '3️⃣', text: '「交通指南」+「实用贴士」落地前过一遍：IC 卡、机场进城、神社礼仪、防灾' },
+    ],
+    TOP_PICKS: ['sensoji', 'shibuya-cross', 'skytree', 'teamlab', 'tsukiji', 'meiji-jingu', 'kabukicho', 'ginza-kabuki'],
+    CATEGORIES: {
+      mosque: '寺庙/神社', palace: '宫殿/园林', museum: '博物馆/体验馆', bazaar: '市场/商店街',
+      waterfront: '游船/水岸', viewpoint: '观景/公园', neighborhood: '街区漫步', experience: '特色体验',
+    },
+  };
+  (global.CityPacks = global.CityPacks || {})[pack.id] = pack;
+  if (typeof module !== 'undefined' && module.exports) module.exports = pack;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ===== js/planner.js ===== */
+/* 通用旅行行程引擎（不绑定任何城市；数据由"城市包"提供）
+ * 纯函数、确定性输出；浏览器挂 window.Planner，Node 走 module.exports。
+ * Planner.setPack(pack) 设置当前城市包后调用 generatePlan / budgetSummary。
+ */
+(function (global) {
+  'use strict';
+
+  let activePack = null;
+  function setPack(p) { activePack = p; }
+  function pack() {
+    if (!activePack) throw new Error('Planner.setPack(pack) 未调用');
+    return activePack;
+  }
+
+  const DAY_CAP_MIN = { relaxed: 6 * 60, standard: 8 * 60, packed: 9.5 * 60 };
+  const SLACK = 30;          // 容量弹性（分钟）
+  const BUFFER = 15;         // 站点间缓冲
+  const LUNCH_START = 13 * 60, LUNCH_MIN = 60, DAY_START = 9 * 60;
+  const MAX_MOSQUES_PER_DAY = 2;
+
+  const WEEKDAYS_CN = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+  const TRANSIT_FALLBACK = { m: 25, how: '🚕 打车', note: '跨区' };
+
+  const pad2 = n => String(n).padStart(2, '0');
+  function localDateStr(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+
+  function transitFor(a, b) {
+    if (!a || !b || a === b) return null;
+    const T = activePack ? activePack.TRANSIT : null;
+    if (T) {
+      const hit = T[a + '|' + b] || T[b + '|' + a];
+      if (hit) return hit;
+    }
+    return TRANSIT_FALLBACK;
+  }
+
+  function formatMin(t) {
+    t = ((t % 1440) + 1440) % 1440;
+    return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0');
+  }
+
+  function interestTag() { // 兴趣 -> tag 命中表（来自城市包 INTERESTS）
+    const out = {};
+    const ints = activePack ? activePack.INTERESTS : null;
+    if (ints) Object.keys(ints).forEach(k => { out[k] = ints[k].tag; });
+    return out;
+  }
+
+  function scoreAttraction(a, cfg, anchorDistrict, dayIndex) {
+    const fit = (a.groupFit && a.groupFit[cfg.group]) || 3;
+    let s = fit * 2 + (a.priority || 1) * 3; // 必看项(priority 3)要有入场券保障
+    if (anchorDistrict) {
+      if (a.district === anchorDistrict) s += 2.2;          // 同区强聚类
+      else if (nearOf(anchorDistrict).includes(a.district)) s += 1.0; // 近邻区
+      else s -= 0.8;                                        // 跨半个城，惩罚
+    }
+    if (dayIndex === 0 && cfg.hotel === a.district) s += 1.5;
+    if (cfg.interests && cfg.interests.length) {
+      const table = interestTag();
+      cfg.interests.forEach(i => { if (a.tags && a.tags.includes(table[i])) s += 0.9; });
+    }
+    if (a.bestTime === 'evening') s += 0.5; // 晚上还能加的偏移，由排程决定去留
+    if (a.fullDay) s += 0.3;
+    return s;
+  }
+
+  // 与某分区换乘 ≤20 分钟的"近邻"分区
+  function nearOf(district) {
+    if (!activePack) return [];
+    return Object.keys(activePack.DISTRICTS).filter(d => {
+      if (d === district) return false;
+      const t = transitFor(district, d);
+      return t && t.m <= 20;
+    });
+  }
+
+  function parseDate(str) { // 'YYYY-MM-DD' -> Date(本地) | null
+    if (!str) return null;
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function addDays(date, n) {
+    const d = new Date(date); d.setDate(d.getDate() + n); return d;
+  }
+
+  function closedOn(a, date) {
+    return !!(date && a.closedDays && a.closedDays.includes(date.getDay()));
+  }
+
+  // 午餐建议：按当日中午所在分区从美食库轮转取（经济档过滤高价，正餐馆不当午餐）
+  function buildLunch(startMin, district, dayIndex, excludeNames, tier) {
+    const fb = activePack && activePack.districtLunchFallback
+      && activePack.districtLunchFallback[district];
+    if (fb) return { start: startMin, end: startMin + LUNCH_MIN,
+      name: fb.name, where: fb.where, price: fb.price };
+    const econMax = activePack ? activePack.MEAL_TIERS.economy.perDay[0] * 1.2 : 300;
+    let foods = (activePack ? activePack.FOODS : [])
+      .filter(f => !f.noLunch && (f.district === district || f.district === 'any')
+        && !(excludeNames || []).includes(f.name));
+    if (tier === 'economy') foods = foods.filter(f => f.price[0] <= econMax);
+    const pick = foods.length ? foods[(dayIndex - 1) % foods.length] : null;
+    if (pick && excludeNames) excludeNames.push(pick.name); // 午餐名字入占用集，当天晚餐不再重复
+    const defPrice = econMax ? [Math.round(econMax * 0.5), Math.round(econMax * 0.9)] : [150, 350];
+    return { start: startMin, end: startMin + LUNCH_MIN,
+      name: pick ? pick.name : '当地午餐', where: pick ? pick.where : '就近餐馆', price: pick ? pick.price : defPrice };
+  }
+
+  // 晚餐：只推荐正餐（noDinner 除外），按餐饮档次过滤，且跨天不重样
+  function buildDinner(district, dayIndex, usedNames, tier) {
+    const econMax = activePack ? activePack.MEAL_TIERS.economy.perDay[0] * 1.2 : 300;
+    let pool = (activePack ? activePack.FOODS : [])
+      .filter(f => !f.noDinner && !usedNames.includes(f.name));
+    if (tier === 'economy') pool = pool.filter(f => f.price[0] <= econMax);
+    if (tier === 'premium') pool = pool.slice().sort((a, b) => b.price[0] - a.price[0]); // 高端档优先大餐
+    const pick = pool.find(f => f.district === district)
+      || pool.find(f => f.district === 'any')
+      || pool[0];
+    if (!pick) return null;
+    usedNames.push(pick.name);
+    return { name: pick.name, where: pick.where, price: pick.price };
+  }
+
+  // 夜间友好：夜场场馆/街区/体验/游船/晚间偏好项；集市 18-19 点关门，不算夜间友好
+  const eveningFriendly = a => a.openLate
+    || ['neighborhood', 'experience', 'waterfront'].includes(a.category)
+    || a.bestTime === 'evening';
+
+  /* ---------------- 生成行程 ---------------- */
+  function generatePlan(cfg, attractions) {
+    cfg = Object.assign({ days: 3, group: 'couple', pace: 'standard', startDate: null,
+      interests: [], hotel: 'undecided', mealTier: 'comfort' }, cfg);
+    const cap = DAY_CAP_MIN[cfg.pace] || DAY_CAP_MIN.standard;
+    const startDate = parseDate(cfg.startDate);
+    const warnings = [];
+    const skipped = [];
+    const chosen = new Set();
+    const dinnerNamesUsed = [];
+
+    const days = [];
+    for (let d = 0; d < cfg.days; d++) {
+      const date = startDate ? addDays(startDate, d) : null;
+      const day = { index: d + 1, date, dateStr: date ? localDateStr(date) : null,
+        weekday: date ? WEEKDAYS_CN[date.getDay()] : '第' + (d + 1) + '天',
+        stops: [], lunch: null, dinner: null, notes: [], used: 0, anchor: null, costPerPerson: [0, 0] };
+      days.push(day);
+    }
+
+    for (const day of days) {
+      // 1) 当日锚点：可用候选中分数最高
+      const avail = attractions
+        .filter(a => !chosen.has(a.id) && !closedOn(a, day.date))
+        .sort((x, y) => scoreAttraction(y, cfg, null, day.index - 1) - scoreAttraction(x, cfg, null, day.index - 1)
+          || (x.id < y.id ? -1 : 1));
+      if (!avail.length) break;
+      const anchor = avail[0];
+      chosen.add(anchor.id);
+      day.anchor = anchor;
+      day.used = anchor.duration * 60;
+      day.stops.push({ attr: anchor, transit: null });
+
+      const fullDay = !!anchor.fullDay;
+      if (fullDay) day.used = Math.max(day.used, 6.5 * 60);
+
+      // 2) 填充：同区优先、容量与清真寺上限约束
+      let mosques = anchor.category === 'mosque' ? 1 : 0;
+      let pool = attractions
+        .filter(a => !chosen.has(a.id) && !closedOn(a, day.date))
+        .sort((x, y) => scoreAttraction(y, cfg, anchor.district, day.index - 1)
+          - scoreAttraction(x, cfg, anchor.district, day.index - 1)
+          || (x.id < y.id ? -1 : 1));
+      if (fullDay) pool = []; // 王子群岛等全天项目当日独占，不再叠加
+      for (const a of pool) {
+        if (a.fullDay) continue;
+        const add = a.duration * 60 + BUFFER;
+        if (day.used + add > cap + SLACK) continue;
+        if (a.category === 'mosque' && mosques >= MAX_MOSQUES_PER_DAY) continue;
+        if (a.category === 'mosque' && day.used > 6 * 60) continue; // 清真寺不排到傍晚（礼拜/关门）
+        if (a.category === 'waterfront' && day.stops.some(x => x.attr.category === 'waterfront')) continue; // 一天不排两种船
+        // 傍晚规则：预估开始时间 ≥18:00 时只排夜游友好项（含 1h 午餐+缓冲的粗估）
+        if (!eveningFriendly(a) && DAY_START + day.used + 75 >= 18 * 60) continue;
+        // 集市收摊早（约 18-19 点），预估 16:30 后不再排
+        if (a.category === 'bazaar' && DAY_START + day.used + 75 >= 16.5 * 60) continue;
+        day.stops.push({ attr: a, transit: null });
+        chosen.add(a.id);
+        day.used += add;
+        if (a.category === 'mosque') mosques++;
+      }
+      const relLabel = (activePack && activePack.religiousLabel) || '宗教场所';
+      if (mosques >= MAX_MOSQUES_PER_DAY) day.notes.push('当日已含 ' + mosques + ' 处' + relLabel + '，避免审美疲劳，不再叠加。');
+      if (fullDay) day.notes.push(anchor.name + ' 为全天行程：请上午尽早出发，并留意返程交通的末班时间。');
+
+      // 3) 时间线：按"最近邻"重排当日顺序避免两岸横跳，9:00 起，正午插入午餐
+      const rest = day.stops.slice(1);
+      const chain = [day.stops[0]];
+      while (rest.length) {
+        let bi = 0, bm = Infinity;
+        for (let i = 0; i < rest.length; i++) {
+          const tr = transitFor(chain[chain.length - 1].attr.district, rest[i].attr.district);
+          const m = tr ? tr.m : 0; // 同区=步行级 0 分钟，不能落到跨区 fallback
+          if (m < bm) { bm = m; bi = i; }
+        }
+        chain.push(rest.splice(bi, 1)[0]);
+      }
+      day.stops = chain;
+
+      let t = (day.anchor && day.anchor.bestTime === 'evening' ? 10.5 * 60 : DAY_START), hadLunch = false;
+      const timedStops = [];
+      for (let i = 0; i < day.stops.length; i++) {
+        const s = day.stops[i];
+        const dur = s.attr.fullDay ? 6.5 * 60 : s.attr.duration * 60;
+        const tr = i > 0 ? transitFor(timedStops[i - 1].attr.district, s.attr.district) : null;
+        const trMin = tr ? tr.m : 0;
+        const st = t + trMin;
+        if (!hadLunch && day.stops.length > 1 && i >= 1 && st + dur > 13 * 60) {
+          // 上一站结束已过正午就直接在原地吃（t），否则走到下一站附近吃（st）；最晚 ~13:30 开饭
+          const lunchStart = Math.round(Math.max(t >= 12 * 60 ? t : st, 11 * 60) / 5) * 5;
+          day.lunch = buildLunch(lunchStart, s.attr.district, day.index, dinnerNamesUsed, cfg.mealTier);
+          t = lunchStart + LUNCH_MIN + trMin + 10; // 午餐后完成转场+10 分钟步行缓冲，杜绝时间重叠
+          hadLunch = true;
+        } else {
+          t = st;
+        }
+        t = Math.round(t / 5) * 5; // 5 分钟取整，避免虚假精确
+        timedStops.push({ start: t, end: t + dur, attr: s.attr, transit: tr });
+        t += dur + BUFFER;
+      }
+      day.stops = timedStops;
+
+      // 4.5) 兜底：仍排到 18:00 后的非夜游项移入未安排（正常已被填充规则拦截）
+      const dropped = timedStops.filter(s => s.start >= 18 * 60 && !eveningFriendly(s.attr));
+      for (const s of dropped) timedStops.splice(timedStops.indexOf(s), 1);
+      dropped.forEach(s => skipped.push({ name: s.attr.name,
+        reason: '第 ' + day.index + ' 天排到该点时已过 18:00（不适宜夜间参观），建议自行替换' }));
+
+      // 4.4) 全天/长行程但未触发午餐插入的（如大岛独占日），补一条午餐建议；
+      //      若落在某个景点时间段内（如全天项目），标记 inline 改为日注记渲染，不占时间线
+      if (!day.lunch && day.used >= 300) {
+        day.lunch = buildLunch(12.5 * 60, day.anchor.district, day.index, dinnerNamesUsed, cfg.mealTier);
+        day.lunch.inline = timedStops.some(s => day.lunch.start >= s.start && day.lunch.end <= s.end);
+      }
+
+      // 4) 晚餐：当日末站分区轮转，正餐不重样
+      const firstDistrict = Object.keys(activePack.DISTRICTS)[0];
+      const lastDistrict = timedStops.length ? timedStops[timedStops.length - 1].attr.district : firstDistrict;
+      day.dinner = buildDinner(lastDistrict, day.index, dinnerNamesUsed, cfg.mealTier);
+
+      // 5) 出发提示
+      if (cfg.hotel && cfg.hotel !== 'undecided' && day.anchor) {
+        const tr = transitFor(cfg.hotel, day.anchor.district);
+        if (tr) day.notes.push('从住宿区出发：' + tr.how + '，约 ' + tr.m + ' 分钟。');
+      }
+      day.costPerPerson = day.stops.reduce((acc, s) => {
+        return [acc[0] + s.attr.price[0], acc[1] + s.attr.price[1]];
+      }, [0, 0]);
+    }
+
+    // 6) 未安排清单与原因
+    for (const a of attractions) {
+      if (chosen.has(a.id)) continue;
+      let reason = '行程天数内时间不足';
+      if (startDate) {
+        const allDaysClosed = days.every((day, i) => closedOn(a, addDays(startDate, i)));
+        if (allDaysClosed && a.closedDays.length) reason = '行程日期内均为闭馆日（' +
+          a.closedDays.map(x => WEEKDAYS_CN[x]).join('/') + ' 闭馆）';
+      } else if (a.closedDays.length) {
+        reason = '未选出发日期，闭馆日未纳入计算（' + a.closedDays.map(x => WEEKDAYS_CN[x]).join('/') + ' 闭馆）';
+      }
+      skipped.push({ name: a.name, reason });
+    }
+
+    // 7) 闭馆日规避提示
+    if (startDate) {
+      const avoided = attractions.filter(a => a.closedDays.length && days.some((day, i) =>
+        closedOn(a, addDays(startDate, i)) && !days[i].stops.some(s => s.attr.id === a.id)
+        && days.some(dd => dd.stops.some(s => s.attr.id === a.id))));
+      if (avoided.length) warnings.push('已自动避开闭馆日：' + avoided.map(a => a.name).join('、') + '。');
+    } else {
+      const ex = attractions.filter(a => a.closedDays && a.closedDays.length).slice(0, 2)
+        .map(a => a.name + WEEKDAYS_CN[a.closedDays[0]] + '闭馆');
+      warnings.push('未选出发日期，闭馆日未纳入计算'
+        + (ex.length ? '（如：' + ex.join('、') + '）' : '') + '，建议填入日期后重新生成。');
+    }
+
+    const filledDays = days.filter(d => d.stops.length);
+    if (filledDays.length < cfg.days) {
+      warnings.push('当前城市包只有 ' + attractions.length + ' 个景点，仅能排出 '
+        + filledDays.length + ' 天行程（其余 ' + (cfg.days - filledDays.length)
+        + ' 天无内容）；餐饮/交通预算仍按 ' + cfg.days + ' 天计算。');
+    }
+
+    const perPerson = filledDays.reduce((acc, day) => [
+      acc[0] + day.costPerPerson[0], acc[1] + day.costPerPerson[1]], [0, 0]);
+
+    return { cfg, days: filledDays, warnings, skipped,
+      costPerPerson: { tickets: perPerson },
+      assumptions: [META_NOTE(startDate)] };
+  }
+
+  function META_NOTE(startDate) {
+    return startDate ? ('行程按 ' + startDate + ' 起算，已规避已知固定闭馆日。')
+      : '未指定出发日期，行程不含封馆日规避。';
+  }
+
+  /* ---------------- 预算与人数关系 ---------------- */
+  function budgetSummary(plan, groupCfg, mealTier, transportMode) {
+    const pk = pack();
+    const heads = groupCfg.adults + groupCfg.children6 + groupCfg.children712 + groupCfg.seniors;
+    const ticketable = groupCfg.adults + groupCfg.seniors + 0.5 * groupCfg.children712; // 幼童免票为通用近似
+    const tickets = [Math.round(plan.costPerPerson.tickets[0] * ticketable),
+                     Math.round(plan.costPerPerson.tickets[1] * ticketable)];
+    const mt = mealTier;
+    const meals = [mt.perDay[0] * heads * plan.cfg.days, mt.perDay[1] * heads * plan.cfg.days];
+
+    const perCar = pk.taxiPerRide || [250, 450];
+    const perRide = pk.transitPerRide || [30, 50];
+    const carCap = pk.taxiPerCar || 4;
+    let transport, transportNote = [];
+    if (transportMode === 'mix') {
+      const cars = Math.ceil(heads / carCap);
+      transport = [perCar[0] * cars * plan.cfg.days + perRide[0] * heads * plan.cfg.days,
+                   perCar[1] * cars * plan.cfg.days + perRide[1] * heads * plan.cfg.days];
+      if (cars > 1) transportNote.push('共 ' + heads + ' 人，出租车需 ' + cars + ' 辆（每车限 ' + carCap + ' 人含副驾），打车费用×' + cars + '。');
+      else transportNote.push(carCap + ' 人内一辆出租车即可；按每日约 1 整程打车+其余公交核算。');
+    } else {
+      // 全程公共交通：按每人每日约 3 程核算
+      transport = [perRide[0] * 3 * heads * plan.cfg.days, perRide[1] * 3 * heads * plan.cfg.days];
+      transportNote.push('公共交通按人头计费，人数增加线性增长。');
+    }
+    if (pk.transportNotes && pk.transportNotes[transportMode === 'mix' ? 'mix' : 'public']) {
+      transportNote.push(pk.transportNotes[transportMode === 'mix' ? 'mix' : 'public']);
+    }
+
+    const bn = pk.budgetNotes || {};
+    const notes = transportNote.slice();
+    notes.push('餐饮按所选档位整日估算；行程内单餐标价为该店人均，仅供替换参考。');
+    if (groupCfg.children6 > 0 && bn.childFree) notes.push(bn.childFree);
+    if (groupCfg.children712 > 0 && bn.childHalf) notes.push(bn.childHalf);
+    if (groupCfg.seniors > 0 && bn.senior) notes.push(bn.senior);
+    if (heads >= 6 && bn.group6) notes.push(bn.group6);
+
+    const total = [tickets[0] + meals[0] + transport[0], tickets[1] + meals[1] + transport[1]];
+    return { heads, tickets, meals, transport, total, perPerson: [
+      Math.round(total[0] / Math.max(heads, 1)), Math.round(total[1] / Math.max(heads, 1))], notes };
+  }
+
+  global.Planner = { generatePlan, budgetSummary, formatMin, transitFor, setPack,
+    DAY_CAP_MIN, MAX_MOSQUES_PER_DAY, WEEKDAYS_CN };
+  if (typeof module !== 'undefined' && module.exports) module.exports = global.Planner;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ===== js/validate.js ===== */
+/* 城市包校验器：导入 JSON 时做结构/语义校验，给出可读错误清单。
+ * 浏览器挂 window.ValidatePack，Node 走 module.exports。
+ * 返回 { ok: bool, errors: string[] }
+ */
+(function (global) {
+  'use strict';
+
+  const GROUP_KEYS = ['solo', 'couple', 'family', 'elderly', 'friends'];
+  const CATEGORY_KEYS = ['mosque', 'palace', 'museum', 'bazaar', 'waterfront',
+    'viewpoint', 'neighborhood', 'experience']; // 引擎按这 8 类做排程语义
+
+  function validatePack(p) {
+    const errs = [];
+    const E = m => { if (errs.length < 12) errs.push(m); };
+
+    if (!p || typeof p !== 'object') return { ok: false, errors: ['城市包必须是一个 JSON 对象'] };
+    if (!/^[a-z0-9-]{2,30}$/.test(p.id || '')) E('id：必填，小写字母/数字/连字符，2-30 位（如 "paris"）');
+    if (!p.city || !p.country) E('city / country：必填（城市名与国家名，中文即可）');
+    if (!p.currency || !p.currency.name) E('currency.name：必填（货币名，如 "里拉"）；perEur 可选（约多少货币=1欧元）');
+
+    // 基础表
+    const needArr = ['ATTRACTIONS', 'FOODS', 'TRANSPORT_GUIDE', 'ROUTE_TABLE', 'TIPS', 'QUICK_FACTS', 'HOWTO', 'TOP_PICKS'];
+    needArr.forEach(k => { if (!Array.isArray(p[k]) || !p[k].length) E(k + '：必须是非空数组'); });
+    ['DISTRICTS', 'CATEGORIES', 'GROUPS', 'PACE', 'INTERESTS', 'HOTELS', 'MEAL_TIERS'].forEach(k => {
+      if (!p[k] || typeof p[k] !== 'object' || Array.isArray(p[k]) || !Object.keys(p[k]).length) E(k + '：必须是非空对象');
+    });
+    ['economy', 'comfort', 'premium'].forEach(k => {
+      const t = p.MEAL_TIERS && p.MEAL_TIERS[k];
+      if (!t || !Array.isArray(t.perDay) || t.perDay.length !== 2 || t.perDay.some(x => typeof x !== 'number' || x < 0))
+        E('MEAL_TIERS.' + k + '.perDay：必须是 [min,max] 正数数组');
+    });
+    if (p.HOTELS && !('undecided' in p.HOTELS)) E('HOTELS：必须包含 "undecided" 选项');
+    ['relaxed', 'standard', 'packed'].forEach(k => {
+      const t = p.PACE && p.PACE[k];
+      if (!t || typeof t.hours !== 'number') E('PACE.' + k + '.hours：必须为数字');
+    });
+    GROUP_KEYS.forEach(k => {
+      if (!p.GROUPS || !p.GROUPS[k] || !p.GROUPS[k].label) E('GROUPS.' + k + '：缺少 label（五类人群一个不能少）');
+    });
+
+    // 分区
+    const districts = p.DISTRICTS ? Object.keys(p.DISTRICTS) : [];
+    if (districts.length) districts.forEach(d => {
+      if (!p.DISTRICTS[d].name) E('DISTRICTS.' + d + '.name：缺少分区名');
+    });
+
+    // 景点
+    const ids = new Set();
+    if (Array.isArray(p.ATTRACTIONS)) p.ATTRACTIONS.forEach((a, i) => {
+      const w = 'ATTRACTIONS[' + i + (a && a.id ? ' ' + a.id : '') + ']';
+      if (!a || typeof a !== 'object') { E(w + '：格式错误'); return; }
+      if (!a.id || !a.name) { E(w + '：缺少 id 或 name'); return; }
+      if (ids.has(a.id)) E(w + '：id 重复 "' + a.id + '"');
+      ids.add(a.id);
+      if (!districts.includes(a.district)) E(w + '.district "' + a.district + '" 不在 DISTRICTS 中');
+      if (!p.CATEGORIES || !(a.category in p.CATEGORIES)) E(w + '.category "' + a.category + '" 不在 CATEGORIES 中');
+      if (!CATEGORY_KEYS.includes(a.category)) E(w + '.category 必须是引擎通用键之一：' + CATEGORY_KEYS.join('/') + '（显示名可在 CATEGORIES 自定义）');
+      if (!(a.duration > 0 && a.duration <= 8)) E(w + '.duration：必须为 0-8 之间的小时数');
+      if (!Array.isArray(a.price) || a.price.length !== 2 || a.price.some(x => typeof x !== 'number' || x < 0) || a.price[0] > a.price[1])
+        E(w + '.price：必须是 [min,max] 且 min ≤ max');
+      (a.closedDays || []).forEach(d => { if (![0,1,2,3,4,5,6].includes(d)) E(w + '.closedDays：' + d + ' 不在 0-6（0=周日）'); });
+      GROUP_KEYS.forEach(g => {
+        const v = a.groupFit && a.groupFit[g];
+        if (!(v >= 1 && v <= 5)) E(w + '.groupFit.' + g + '：必须是 1-5');
+      });
+      if (!a.transport) E(w + '.transport：缺少"怎么去"说明');
+      if (!Array.isArray(a.tips) || !a.tips.length) E(w + '.tips：至少 1 条贴士');
+      if (!a.desc) E(w + '.desc：缺少简介');
+    });
+    if (Array.isArray(p.TOP_PICKS)) p.TOP_PICKS.forEach(id => {
+      if (!ids.has(id)) E('TOP_PICKS："' + id + '" 不存在于 ATTRACTIONS');
+    });
+
+    // 换乘矩阵：所有分区对全覆盖（含双序任一）
+    for (let i = 0; i < districts.length; i++) for (let j = i + 1; j < districts.length; j++) {
+      const t = p.TRANSIT && (p.TRANSIT[districts[i] + '|' + districts[j]] || p.TRANSIT[districts[j] + '|' + districts[i]]);
+      if (!t) E('TRANSIT：缺少分区对 ' + districts[i] + ' ↔ ' + districts[j]);
+      else if (!(t.m > 0) || !t.how) E('TRANSIT ' + districts[i] + '|' + districts[j] + '：需要 m(分钟)>0 与 how(方式)');
+    }
+
+    // 美食
+    if (Array.isArray(p.FOODS)) p.FOODS.forEach((f, i) => {
+      const w = 'FOODS[' + i + ']';
+      if (!f.name || !f.where) E(w + '：缺少 name 或 where');
+      if (f.district !== 'any' && !districts.includes(f.district)) E(w + '.district "' + f.district + '" 不在 DISTRICTS 中（或用 "any"）');
+      if (!Array.isArray(f.price) || f.price.length !== 2) E(w + '.price：必须是 [min,max]');
+    });
+
+    // 交通与贴士
+    if (Array.isArray(p.ROUTE_TABLE)) p.ROUTE_TABLE.forEach((r, i) => {
+      if (!Array.isArray(r) || r.length !== 4) E('ROUTE_TABLE[' + i + ']：每行必须是 4 列 [从→到, 怎么走, 耗时, 费用]');
+    });
+    if (Array.isArray(p.TIPS)) p.TIPS.forEach((t, i) => {
+      if (!t.title || !Array.isArray(t.points) || !t.points.length) E('TIPS[' + i + ']：需要 title 与非空 points');
+    });
+
+    return { ok: errs.length === 0, errors: errs };
+  }
+
+  global.ValidatePack = validatePack;
+  if (typeof module !== 'undefined' && module.exports) module.exports = validatePack;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* ===== js/app.js ===== */
+/* 通用旅行攻略工具 — 视图层（多城市包） */
+(function () {
+  'use strict';
+  const P = window.Planner, validatePack = window.ValidatePack;
+  const $ = sel => document.querySelector(sel);
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  const LS_PACKS = 'travelguide.customPacks';
+  const LS_CITY = 'travelguide.lastCity';
+
+  const Packs = window.CityPacks;
+  let curId = 'istanbul';
+  let D = Packs[curId];
+
+  const state = { tab: 'overview', plan: null, budget: null, groupCfg: null,
+    filters: { q: '', cat: '', district: '', group: '' } };
+
+  /* ---------- 币种相关格式化 ---------- */
+  const cur = () => D.currency || { name: '' };
+  const tlRange = (v) => v[0] === v[1]
+    ? (v[0] === 0 ? '免费' : '约 ' + v[0] + ' ' + cur().name)
+    : '约 ' + v[0] + '–' + v[1] + ' ' + cur().name;
+  const tlRangeEur = (v) => '≈ €' + (v[0] / cur().perEur).toFixed(0) + '–' + (v[1] / cur().perEur).toFixed(0);
+  const fmtK = v => v[0] >= 10000
+    ? `${Math.round(v[0] / 1000)}k–${Math.round(v[1] / 1000)}k ${cur().name}`
+    : (v[0] >= 1000 ? `${Math.round(v[0] / 100) / 10}k–${Math.round(v[1] / 100) / 10}k ${cur().name}` : tlRange(v));
+
+  /* ---------- Toast ---------- */
+  let toastTimer = null;
+  function toast(html, isErr) {
+    let el = $('#toast');
+    if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+    el.innerHTML = html;
+    el.className = 'show' + (isErr ? ' err' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ''; }, isErr ? 8000 : 3500);
+  }
+
+  /* ---------- 城市切换 ---------- */
+  function buildCitySelect() {
+    const sel = $('#city-select');
+    sel.innerHTML = Object.values(Packs).map(pk =>
+      `<option value="${esc(pk.id)}">${esc(pk.country)} · ${esc(pk.city)}${pk.badge ? '（' + esc(pk.badge) + '）' : ''}</option>`).join('');
+    sel.value = curId;
+  }
+
+  function switchCity(id, keepTab) {
+    if (!Packs[id]) return;
+    curId = id; D = Packs[id];
+    const sel = $('#city-select'); if (sel) sel.value = id;
+    P.setPack(D);
+    try { localStorage.setItem(LS_CITY, id); } catch (e) {}
+    // 标题与页头
+    $('#city-name').textContent = D.country + '·' + D.city;
+    document.title = D.city + '旅行攻略工具 · 游玩时长/人群适配/交通/行程';
+    $('#site-sub').textContent = D.META.subtitle + ' ｜ 离线可用';
+    $('#site-disclaimer').textContent = '⚠️ ' + D.META.disclaimer;
+    // 重置状态
+    state.filters = { q: '', cat: '', district: '', group: '' };
+    state.plan = null; state.budget = null;
+    renderAll();
+    buildPlannerForm();
+    if (!keepTab) switchTab('overview');
+  }
+
+  /* ---------- Tab 框架 ---------- */
+  function switchTab(name) {
+    state.tab = name;
+    document.querySelectorAll('section.view').forEach(s =>
+      s.classList.toggle('active', s.id === 'view-' + name));
+    document.querySelectorAll('nav.tabs button').forEach(b =>
+      b.classList.toggle('active', b.dataset.tab === name));
+    window.scrollTo({ top: 0 });
+  }
+
+  /* ---------- 总览 ---------- */
+  function renderOverview() {
+    $('#view-overview').innerHTML = `
+      <h2 class="vt">📍 关于${esc(D.city)}</h2>
+      <p class="vd">${esc(D.overview)}</p>
+      <div class="warnbox">📍 ${esc(D.META.season)}</div>
+      <div class="grid g3" id="qf-grid"></div>
+      <h2 class="vt" style="margin-top:20px">🧭 怎么用这个工具</h2>
+      <div class="grid g3" id="howto-grid"></div>
+      <h2 class="vt" style="margin-top:20px">⭐ 最多人选的事</h2>
+      <div class="chips" id="top-chips" style="margin-top:8px"></div>`;
+    $('#qf-grid').innerHTML = D.QUICK_FACTS.map(f =>
+      `<div class="card qf"><div class="icon">${f.icon}</div><div class="k">${esc(f.k)}</div><div class="v">${esc(f.v)}</div></div>`).join('');
+    $('#howto-grid').innerHTML = D.HOWTO.map(h =>
+      `<div class="card"><div style="font-size:20px">${h.icon}</div>${esc(h.text)}</div>`).join('');
+    $('#top-chips').innerHTML = D.TOP_PICKS.map(id => {
+      const a = D.ATTRACTIONS.find(x => x.id === id); if (!a) return '';
+      return `<span class="chip" data-go="${a.id}">${esc(a.name)}</span>`;
+    }).join('') + `<span class="chip on" id="go-plan">🧳 直接帮我排行程 →</span>`;
+    $('#top-chips').querySelectorAll('[data-go]').forEach(el =>
+      el.addEventListener('click', () => { switchTab('library');
+        const a = D.ATTRACTIONS.find(x => x.id === el.dataset.go);
+        resetLibraryFilters(a ? a.name : ''); }));
+    const gp = $('#go-plan'); if (gp) gp.addEventListener('click', () => switchTab('planner'));
+  }
+
+  /* ---------- 景点库 ---------- */
+  function fitStars(v) { return '★'.repeat(v) + '☆'.repeat(5 - v); }
+  function renderLibrary() {
+    const f = state.filters;
+    let list = D.ATTRACTIONS.slice();
+    if (f.q) {
+      const q = f.q.trim().toLowerCase();
+      list = list.filter(a => (a.name + a.local + a.tags.join('') + a.desc).toLowerCase().includes(q)
+        || a.id === f.q);
+    }
+    if (f.cat) list = list.filter(a => a.category === f.cat);
+    if (f.district) list = list.filter(a => a.district === f.district);
+    if (f.group) list = list.filter(a => a.groupFit[f.group] >= 4)
+      .sort((x, y) => y.groupFit[f.group] - x.groupFit[f.group]);
+    else list.sort((x, y) => y.priority - x.priority || (x.id < y.id ? -1 : 1));
+
+    $('#lib-count').textContent = '共 ' + list.length + ' 个';
+    $('#lib-grid').innerHTML = list.map(a => {
+      const closed = a.closedDays.length ? `<span class="badge warnclose">${a.closedDays.map(d => P.WEEKDAYS_CN[d]).join('/')}闭馆</span>` : '';
+      const fit = f.group
+        ? `<div class="fit-row"><b>${D.GROUPS[f.group].icon}${D.GROUPS[f.group].label}适配：</b>${fitStars(a.groupFit[f.group])}</div>`
+        : `<div class="fit-row">${Object.keys(D.GROUPS).map(g =>
+            `<span>${D.GROUPS[g].icon}<b>${fitStars(a.groupFit[g])}</b></span>`).join('')}</div>`;
+      return `<div class="card attr-card" id="attr-${a.id}">
+        <h3>${esc(a.name)} <span style="font-weight:400;color:var(--muted);font-size:12px">${esc(a.local || '')}</span></h3>
+        <div class="meta">
+          <span class="badge">${D.DISTRICTS[a.district].icon} ${esc(D.DISTRICTS[a.district].name)}</span>
+          <span class="badge">${esc(D.CATEGORIES[a.category])}</span>
+          <span class="badge time">⏱ 建议玩 ${a.duration < 1 ? a.duration * 60 + ' 分钟' : a.duration + ' 小时'}</span>
+          <span class="badge price">💰 ${tlRange(a.price)}${cur().perEur && a.price[1] >= 800 ? '（' + tlRangeEur(a.price) + '）' : ''}</span>
+          ${closed}
+        </div>
+        <p class="desc">${esc(a.desc)}</p>
+        ${a.priceNote ? `<p class="desc" style="margin-top:3px">ℹ️ ${esc(a.priceNote)}</p>` : ''}
+        ${fit}
+        <div class="transport">🚏 ${esc(a.transport)}</div>
+        <details><summary>看点与贴士</summary><ul>${a.tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></details>
+      </div>`;
+    }).join('') || '<p class="vd">没有匹配的景点，试试放宽筛选条件。</p>';
+  }
+
+  function bindLibrary() {
+    $('#f-q').addEventListener('input', e => { state.filters.q = e.target.value; renderLibrary(); });
+    $('#f-cat').addEventListener('change', e => { state.filters.cat = e.target.value; renderLibrary(); });
+    $('#f-district').addEventListener('change', e => { state.filters.district = e.target.value; renderLibrary(); });
+    $('#f-group').addEventListener('change', e => { state.filters.group = e.target.value; renderLibrary(); });
+  }
+
+  function rebuildLibraryFilters() {
+    $('#f-q').value = state.filters.q;
+    $('#f-cat').innerHTML = '<option value="">全部类别</option>' + Object.entries(D.CATEGORIES)
+      .map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+    $('#f-cat').value = state.filters.cat;
+    $('#f-district').innerHTML = '<option value="">全部分区</option>' + Object.entries(D.DISTRICTS)
+      .map(([k, v]) => `<option value="${k}">${v.name}</option>`).join('');
+    $('#f-district').value = state.filters.district;
+    $('#f-group').innerHTML = '<option value="">所有人群</option>' + Object.entries(D.GROUPS)
+      .map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+    $('#f-group').value = state.filters.group;
+    renderLibrary();
+  }
+
+  // 跳转景点库并搜索：重置所有筛选避免"共 0 个"死胡同，并高亮目标卡片
+  function resetLibraryFilters(name) {
+    state.filters = { q: name, cat: '', district: '', group: '' };
+    rebuildLibraryFilters();
+    const card = document.querySelector('#lib-grid .attr-card');
+    if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.style.outline = '3px solid var(--terra)';
+      setTimeout(() => { card.style.outline = ''; }, 2500); }
+  }
+
+  /* ---------- 行程规划 ---------- */
+  function buildPlannerForm() {
+    // 人群/节奏选项
+    $('#p-group').innerHTML = Object.entries(D.GROUPS)
+      .map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+    $('#p-group').value = 'couple';
+    $('#p-pace').innerHTML = Object.entries(D.PACE)
+      .map(([k, v]) => `<option value="${k}">${v.icon} ${v.label}</option>`).join('');
+    $('#p-pace').value = 'standard';
+    $('#p-hotel').innerHTML = Object.entries(D.HOTELS)
+      .map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('');
+    $('#p-hotel').value = 'undecided';
+    // 兴趣 chips（按城市包）
+    $('#p-interests').innerHTML = Object.entries(D.INTERESTS)
+      .map(([k, v]) => `<span class="chip" data-interest="${k}">${v.icon} ${v.label}</span>`).join('');
+    document.querySelectorAll('#p-interests .chip').forEach(c =>
+      c.addEventListener('click', () => c.classList.toggle('on')));
+    // 餐饮档（带本城价位提示）
+    $('#p-meal').innerHTML = Object.entries(D.MEAL_TIERS)
+      .map(([k, v]) => `<option value="${k}">${v.label}（约 ${v.perDay[0]}–${v.perDay[1]} ${esc(cur().name)}/人/天）</option>`).join('');
+    $('#p-meal').value = 'comfort';
+    // 交通方式
+    $('#p-transport').innerHTML = Object.entries(D.TRANSPORT_MODES || {})
+      .map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('') || '<option value="public">公共交通</option>';
+    $('#p-transport').value = 'public';
+    $('#plan-out').innerHTML = '';
+  }
+
+  function bindPlanner() {
+    $('#p-days').addEventListener('input', e => $('#p-days-val').textContent = e.target.value + ' 天');
+    $('#p-go').addEventListener('click', runPlan);
+    $('#p-heads').addEventListener('input', e => {
+      const others = ['children6', 'children712', 'seniors']
+        .reduce((s, k) => s + (parseInt($('#p-' + k).value, 10) || 0), 0);
+      const adults = Math.max(1, (parseInt(e.target.value, 10) || 1) - others);
+      $('#p-adults').value = adults;
+    });
+  }
+
+  function runPlan() {
+   try {
+    const cfg = {
+      days: +$('#p-days').value,
+      group: $('#p-group').value,
+      pace: $('#p-pace').value,
+      startDate: $('#p-date').value || null,
+      interests: Array.from(document.querySelectorAll('#p-interests .chip.on')).map(c => c.dataset.interest),
+      hotel: $('#p-hotel').value,
+      mealTier: $('#p-meal').value,
+    };
+    state.plan = P.generatePlan(cfg, D.ATTRACTIONS);
+    const g = {
+      adults: Math.max(0, +$('#p-adults').value || 0),
+      children6: Math.max(0, +$('#p-children6').value || 0),
+      children712: Math.max(0, +$('#p-children712').value || 0),
+      seniors: Math.max(0, +$('#p-seniors').value || 0),
+    };
+    const heads = g.adults + g.children6 + g.children712 + g.seniors;
+    if (heads === 0) { g.adults = 1; }
+    state.groupCfg = g;
+    state.budget = P.budgetSummary(state.plan, g, D.MEAL_TIERS[$('#p-meal').value],
+      $('#p-transport').value);
+    renderPlan();
+   } catch (e) {
+    console.error(e);
+    toast('❌ 行程生成失败：' + esc(e.message) + '<br>请检查城市包数据是否完整（可用「获取模板」对照）。', true);
+   }
+  }
+
+  function renderPlan() {
+    const plan = state.plan, b = state.budget;
+    const grp = D.GROUPS[plan.cfg.group], pace = D.PACE[plan.cfg.pace];
+    let html = `<div class="day-head no-print" style="margin-top:14px">
+      <h3>🧳 ${esc(D.country)}·${esc(D.city)} ｜ ${grp.icon} ${esc(grp.label)} ｜ ${esc(pace.icon)} ${esc(pace.label)}节奏 ｜ ${plan.cfg.days} 天</h3>
+      <span class="wd">${plan.cfg.startDate ? '自 ' + plan.cfg.startDate + ' 起' : '未选日期（未规避闭馆日）'}</span></div>`;
+
+    html += plan.warnings.map(w => `<div class="warnbox">⚠️ ${esc(w)}</div>`).join('');
+
+    html += plan.days.map(day => {
+      const items = day.stops.map(s => {
+        const a = s.attr;
+        const tr = s.transit ? `<div class="tl-transit">🚏 从上一站：${esc(s.transit.how)} 约 ${s.transit.m} 分钟${s.transit.note ? '（' + esc(s.transit.note) + '）' : ''}</div>` : '';
+        return { start: s.start, html: `<div class="tl-item">
+          ${tr}
+          <span class="tl-time">${P.formatMin(s.start)}–${P.formatMin(Math.round(s.end / 5) * 5)}</span>
+          <span class="tl-name">${esc(a.name)}</span>
+          <span class="tl-meta"> ｜ ⏱ ${a.duration} 小时 ｜ 💰 ${tlRange(a.price)} ｜ ${esc(D.DISTRICTS[a.district].name)}</span>
+          <div class="tl-meta">${esc(a.transport)}</div>
+        </div>` };
+      });
+      if (day.lunch && !day.lunch.inline) items.push({ start: day.lunch.start, html: `<div class="tl-item lunch">
+        <span class="tl-time">${P.formatMin(day.lunch.start)}–${P.formatMin(day.lunch.end)}</span>
+        <span class="tl-name">🍽 午餐：${esc(day.lunch.name)}</span>
+        <span class="tl-meta"> ｜ ${esc(day.lunch.where)} ｜ ${tlRange(day.lunch.price)}/人</span></div>` });
+      items.sort((x, y) => x.start - y.start);
+      const stops = items.map(i => i.html).join('');
+      const dinner = day.dinner ? `<div class="dinner">🌙 晚餐建议：<b>${esc(day.dinner.name)}</b>（${esc(day.dinner.where)}）
+        ｜ ${tlRange(day.dinner.price)}/人</div>` : '';
+      const notes = day.notes.map(n => `<div class="day-note">💡 ${esc(n)}</div>`).join('')
+        + (day.lunch && day.lunch.inline ? `<div class="day-note">🍽 午餐在行程内解决：${esc(day.lunch.name)}（${esc(day.lunch.where)}，${tlRange(day.lunch.price)}/人）</div>` : '');
+      return `<div class="card" style="margin-bottom:14px">
+        <div class="day-head"><h3>Day ${day.index}</h3><span class="wd">${day.dateStr ? day.dateStr + ' ' : ''}${esc(day.weekday)}</span>
+          <span class="tl-meta">当日门票参考 ${tlRange(day.costPerPerson)}/人</span></div>
+        ${notes}
+        <div class="tl">${stops}</div>
+        ${dinner}
+      </div>`;
+    }).join('');
+
+    // 预算
+    const eurCards = cur().perEur
+      ? `<div class="card"><div class="big">≈ €${Math.round(b.total[0] / cur().perEur / 10) * 10}–${Math.round(b.total[1] / cur().perEur / 10) * 10}</div><div class="lab">折合欧元（全团，汇率仅为参考）</div></div>` : '';
+    html += `<div class="card" style="margin-top:8px">
+      <h3>💰 预算估算（${b.heads} 人：${state.groupCfg.adults} 成人${state.groupCfg.children6 ? ' / ' + state.groupCfg.children6 + ' 幼童' : ''}${state.groupCfg.children712 ? ' / ' + state.groupCfg.children712 + ' 儿童' : ''}${state.groupCfg.seniors ? ' / ' + state.groupCfg.seniors + ' 老人' : ''}）</h3>
+      <div class="budget">
+        <div class="card"><div class="big">${fmtK(b.tickets)}</div><div class="lab">🎫 门票全团</div></div>
+        <div class="card"><div class="big">${fmtK(b.meals)}</div><div class="lab">🍽 餐饮全团（${plan.cfg.days} 天）</div></div>
+        <div class="card"><div class="big">${fmtK(b.transport)}</div><div class="lab">🚏 市内交通全团</div></div>
+        ${eurCards}
+        <div class="card"><div class="big">${fmtK(b.perPerson)}</div><div class="lab">🧍 人均（不含机票住宿）</div></div>
+      </div>
+      <div class="relbox"><b>👥 人数关系提示：</b><ul>${b.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul></div>
+    </div>`;
+
+    // 未安排（含跳转景点库快捷入口）
+    if (plan.skipped.length) {
+      html += `<div class="card skipbox no-print" style="margin-top:12px"><h3>📋 未安排的景点（可手动替换）</h3>
+        <ul>${plan.skipped.map(s => `<li><b>${esc(s.name)}</b> — ${esc(s.reason)}
+          <a href="#" class="skip-link" data-name="${esc(s.name)}" style="color:var(--teal);font-size:12px">→ 在景点库查看</a></li>`).join('')}</ul></div>`;
+    }
+    html += `<div class="no-print" style="margin-top:14px">
+      <button class="btn secondary" id="p-print2">🖨 打印 / 存 PDF 这份行程</button></div>`;
+    $('#plan-out').innerHTML = html;
+    document.querySelectorAll('.skip-link').forEach(a =>
+      a.addEventListener('click', e => { e.preventDefault();
+        switchTab('library'); resetLibraryFilters(a.dataset.name); }));
+    const p2 = $('#p-print2'); if (p2) p2.addEventListener('click', () => window.print());
+    $('#plan-out').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  /* ---------- 交通指南 ---------- */
+  function renderTransport() {
+    $('#view-transport').innerHTML = `
+      <h2 class="vt">🚏 ${esc(D.city)}交通指南</h2>
+      <p class="vd">${esc(D.transportSubtitle || '')}</p>
+      <div class="grid g2">${D.TRANSPORT_GUIDE.map(t => `<div class="card trans-card">
+        <h3>${t.icon} ${esc(t.title)}</h3><ul>${t.items.map(i => `<li>${esc(i)}</li>`).join('')}</ul></div>`).join('')}</div>
+      <h2 class="vt" style="margin-top:20px">🗺 常见点对点速查</h2>
+      <table class="route"><tr><th>从 → 到</th><th>怎么走</th><th>耗时</th><th>费用参考</th></tr>
+      ${D.ROUTE_TABLE.map(r => `<tr>${r.map((c, i) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</table>`;
+  }
+
+  /* ---------- 实用贴士 ---------- */
+  function renderTips() {
+    $('#view-tips').innerHTML = `
+      <h2 class="vt">🧠 ${esc(D.city)}实用贴士</h2>
+      <p class="vd">点开折叠看细节；高频踩坑点都收录在内。</p>
+      <div class="card tips-card">${D.TIPS.map((t, i) => `<details ${i < 2 ? 'open' : ''}>
+        <summary>${t.icon} ${esc(t.title)}</summary><ul>${t.points.map(p => `<li>${esc(p)}</li>`).join('')}</ul></details>`).join('')}</div>
+      <h2 class="vt" style="margin-top:20px">🍖 必吃清单</h2>
+      <div class="grid g2">${D.FOODS.map(f => `<div class="card"><h3>${esc(f.name)}</h3>
+        <p class="desc">${esc(f.where)}</p><p style="font-size:13px;margin-top:4px">${esc(f.note)}</p>
+        <p class="desc" style="margin-top:4px">💰 约 ${f.price[0]}–${f.price[1]} ${esc(cur().name)}/人</p></div>`).join('')}</div>`;
+  }
+
+  /* ---------- 城市包导入/导出/模板 ---------- */
+  function download(name, text) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+
+  function stripForExport(pk) {
+    const c = JSON.parse(JSON.stringify(pk));
+    delete c._custom;
+    const head = { id: c.id, country: c.country, city: c.city };
+    if (c.badge) head.badge = c.badge;
+    if (c.currency) head.currency = c.currency;
+    Object.keys(head).forEach(k => delete c[k]);
+    return Object.assign(head, c);
+  }
+
+  function exportCurrentPack() {
+    download(D.id + '.citypack.json', JSON.stringify(stripForExport(D), null, 2));
+    toast('📦 已导出 <b>' + esc(D.city) + '</b> 城市包（' + esc(D.id + '.citypack.json') + '），可分享给朋友导入。');
+  }
+
+  function downloadTemplate() {
+    const tpl = {
+      id: 'my-city', country: '示例国', city: '示例城',
+      badge: '自定义包', currency: { name: '当地货币', perEur: 0 },
+      overview: '一两句话介绍这座城市、建议玩几天（显示在总览页）。',
+      transportSubtitle: '交通页副标题，如：一张交通卡走全城；价格为近似区间。',
+      religiousLabel: '寺庙', transitPerRide: [30, 50], taxiPerRide: [250, 450], taxiPerCar: 4,
+      transportNotes: { public: '本地公共交通的多人规则说明（如一卡可否多人共用）' },
+      budgetNotes: { childFree: '幼儿免票政策', childHalf: '儿童半价政策', senior: '老年票政策', group6: '6 人以上订位提示' },
+      districtLunchFallback: {},
+      META: { title: '示例城旅行攻略工具', subtitle: '游玩时长 · 人群适配 · 交通方式', disclaimer: '价格为近似区间，行前以官方为准', season: '当季天气一句话' },
+      GROUPS: {
+        solo: { label: '独自旅行', icon: '🧍', desc: '' }, couple: { label: '情侣/二人', icon: '💑', desc: '' },
+        family: { label: '亲子家庭', icon: '👨‍👩‍👧', desc: '' }, elderly: { label: '带老人同行', icon: '👴', desc: '' },
+        friends: { label: '朋友结伴', icon: '🧑‍🤝‍🧑', desc: '' },
+      },
+      PACE: {
+        relaxed: { label: '轻松', icon: '🐢', hours: 6 }, standard: { label: '标准', icon: '🚶', hours: 8 },
+        packed: { label: '特种', icon: '⚡', hours: 9.5 },
+      },
+      INTERESTS: { history: { label: '历史人文', icon: '🏛️', tag: '历史' }, food: { label: '美食', icon: '🍖', tag: '美食' },
+        photo: { label: '摄影', icon: '📷', tag: '摄影' }, kids: { label: '亲子', icon: '🧒', tag: '亲子' } },
+      HOTELS: { center: { label: '市中心' }, undecided: { label: '还没定' } },
+      MEAL_TIERS: { economy: { label: '经济', perDay: [200, 400] }, comfort: { label: '舒适', perDay: [500, 900] }, premium: { label: '高端', perDay: [1200, 2500] } },
+      TRANSPORT_MODES: { public: { label: '全程公共交通' }, mix: { label: '出租+公交混合' } },
+      DISTRICTS: { oldtown: { name: '老城', icon: '🏙️' }, downtown: { name: '市中心', icon: '🏬' } },
+      TRANSIT: { 'oldtown|downtown': { m: 15, how: '🚇 地铁 1 号线', note: '' } },
+      ATTRACTIONS: [
+        { id: 'example-attraction', name: '示例景点', local: 'Example Site', district: 'oldtown', category: 'museum',
+          desc: '一句话介绍。', duration: 1.5, bestTime: 'morning', closedDays: [1], price: [100, 200],
+          priceNote: '周一闭馆', groupFit: { solo: 4, couple: 4, family: 4, elderly: 4, friends: 4 },
+          priority: 3, tags: ['历史'], transport: '🚇 地铁 oldtown 站步行 5 分钟',
+          tips: ['贴士 1', '贴士 2'] },
+      ],
+      FOODS: [
+        { name: '示例美食', where: '哪里吃', district: 'any', price: [100, 200], note: '一句话点评' },
+      ],
+      TRANSPORT_GUIDE: [ { icon: '💳', title: '交通卡', items: ['怎么买、多少钱'] } ],
+      ROUTE_TABLE: [['老城 → 市中心', '地铁 1 号线', '约 15 分钟', '约 50 当地货币']],
+      TIPS: [ { icon: '🛂', title: '签证', points: ['要点 1'] } ],
+      QUICK_FACTS: [ { icon: '💰', k: '货币', v: '当地货币' } ],
+      HOWTO: [ { icon: '1️⃣', text: '填数据前先读 docs/CITY-PACK-GUIDE.md' } ],
+      TOP_PICKS: ['example-attraction'],
+      CATEGORIES: { mosque: '寺庙/教堂', palace: '宫殿', museum: '博物馆', bazaar: '市场', waterfront: '游船', viewpoint: '观景', neighborhood: '街区', experience: '体验' },
+    };
+    download('citypack-template.json', JSON.stringify(tpl, null, 2));
+    toast('📄 模板已下载。按模板填好后再「导入城市包」即可使用；字段说明见 docs/CITY-PACK-GUIDE.md。');
+  }
+
+  function persistCustomPacks() {
+    try {
+      const customs = Object.values(Packs).filter(p => p._custom).map(stripForExport);
+      localStorage.setItem(LS_PACKS, JSON.stringify(customs));
+    } catch (e) { /* file:// 下 localStorage 可能不可用：仅本会话有效 */ }
+  }
+
+  function loadCustomPacks() {
+    try {
+      const raw = localStorage.getItem(LS_PACKS);
+      if (!raw) return;
+      JSON.parse(raw).forEach(pk => {
+        const v = validatePack(pk);
+        if (v.ok) { pk._custom = true; Packs[pk.id] = pk; }
+      });
+    } catch (e) { /* 忽略 */ }
+  }
+
+  function importPackFile(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let pk;
+      try { pk = JSON.parse(reader.result); }
+      catch (e) { toast('❌ 不是有效的 JSON 文件：' + esc(e.message), true); return; }
+      const v = validatePack(pk);
+      if (!v.ok) {
+        toast('❌ 城市包校验未通过（' + v.errors.length + ' 处）：<br>· ' + v.errors.join('<br>· '), true);
+        return;
+      }
+      pk._custom = true;
+      const existed = !!Packs[pk.id];
+      Packs[pk.id] = pk;
+      persistCustomPacks();
+      buildCitySelect();
+      switchCity(pk.id, true);
+      toast((existed ? '🔄 已更新' : '✅ 已导入') + ' 城市包：<b>' + esc(pk.country) + '·' + esc(pk.city) + '</b>（' + pk.ATTRACTIONS.length + ' 个景点）。'
+        + (existed ? '' : '自定义包保存在本浏览器，双击离线打开时同样可用。'));
+    };
+    reader.onerror = () => toast('❌ 文件读取失败', true);
+    reader.readAsText(file, 'utf-8');
+  }
+
+  /* ---------- 渲染编排 ---------- */
+  function renderAll() {
+    renderOverview();
+    rebuildLibraryFilters();
+    renderTransport();
+    renderTips();
+  }
+
+  /* ---------- 启动 ---------- */
+  document.addEventListener('DOMContentLoaded', () => {
+    loadCustomPacks();
+    let last = null;
+    try { last = localStorage.getItem(LS_CITY); } catch (e) {}
+    if (last && Packs[last]) curId = last;
+
+    document.querySelectorAll('nav.tabs button').forEach(b =>
+      b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    $('#city-select').addEventListener('change', e => switchCity(e.target.value, true));
+    $('#btn-export').addEventListener('click', exportCurrentPack);
+    $('#btn-template').addEventListener('click', downloadTemplate);
+    $('#btn-import').addEventListener('click', () => $('#file-import').click());
+    $('#file-import').addEventListener('change', e => {
+      if (e.target.files && e.target.files[0]) importPackFile(e.target.files[0]);
+      e.target.value = '';
+    });
+
+    buildCitySelect();
+    bindLibrary();
+    bindPlanner();
+    switchCity(curId, true); // 初始化 + 渲染
+    switchTab('overview');
+  });
+})();
+
+</script>
+</body>
+</html>
