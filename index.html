@@ -72,6 +72,7 @@ p.vd { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
 .filters input[type=search], .filters select, .planner-form select, .planner-form input {
   padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff;
   font-size: 14px; color: var(--ink); }
+.planner-form select, .planner-form input { width: 100%; max-width: 100%; }
 .count { color: var(--muted); font-size: 13px; margin-left: auto; }
 .attr-card { border-left: 5px solid var(--teal); }
 .attr-card .meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
@@ -155,6 +156,21 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
   .card, .tl-item { box-shadow: none; }
   .btn { display: none !important; }
 }
+
+/* 行程编辑 */
+.tl-item { position: relative; }
+.rm { position: absolute; top: 8px; right: 8px; border: none; background: #f3e5dd; color: #a44a1a;
+  width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 13px; line-height: 1; }
+.rm:hover { background: #e7c9b8; }
+.day-edit { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px;
+  border-top: 1px dashed var(--line); padding-top: 8px; max-width: 100%; }
+.day-edit .free { font-size: 12px; color: var(--muted); }
+.btn-mini { border: 1px solid var(--teal); color: var(--teal-dark); background: #eef5f4;
+  font-size: 12.5px; padding: 6px 12px; border-radius: 999px; cursor: pointer; }
+.btn-mini:disabled { opacity: .45; cursor: not-allowed; }
+.add-select { flex: 1 1 160px; min-width: 0; max-width: 320px; padding: 6px 8px; border-radius: 10px;
+  border: 1px solid var(--line); font-size: 12.5px; background: #fff; color: var(--ink); }
+@media print { .day-edit, .rm { display: none !important; } }
 
 </style>
 </head>
@@ -2944,6 +2960,76 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     || ['neighborhood', 'experience', 'waterfront'].includes(a.category)
     || a.bestTime === 'evening';
 
+
+  /* 单日排程：输入 day.stops=[{attr}]，重算最近邻顺序/时间线/午餐/晚餐/当日成本。
+   * generatePlan 与编辑操作(增删景点)共用；opts.enforceEvening=false 时不再丢弃晚间项（尊重用户手动选择）。 */
+  function scheduleDay(day, cfg, usedNames, opts) {
+    opts = opts || {};
+    day.lunch = null; day.dinner = null;
+    if (!day.stops.length) {
+      day.costPerPerson = [0, 0];
+      return;
+    }
+    // 最近邻排序防横跳
+    const rest = day.stops.slice(1);
+    const chain = [day.stops[0]];
+    while (rest.length) {
+      let bi = 0, bm = Infinity;
+      for (let i = 0; i < rest.length; i++) {
+        const tr = transitFor(chain[chain.length - 1].attr.district, rest[i].attr.district);
+        const m = tr ? tr.m : 0;
+        if (m < bm) { bm = m; bi = i; }
+      }
+      chain.push(rest.splice(bi, 1)[0]);
+    }
+    day.stops = chain;
+
+    let t = (day.anchor && day.anchor.bestTime === 'evening' ? 10.5 * 60 : DAY_START), hadLunch = false;
+    const timedStops = [];
+    for (let i = 0; i < day.stops.length; i++) {
+      const s = day.stops[i];
+      const dur = s.attr.fullDay ? 6.5 * 60 : s.attr.duration * 60;
+      const tr = i > 0 ? transitFor(timedStops[i - 1].attr.district, s.attr.district) : null;
+      const trMin = tr ? tr.m : 0;
+      const st = t + trMin;
+      if (!hadLunch && day.stops.length > 1 && i >= 1 && st + dur > 13 * 60) {
+        const lunchStart = Math.round(Math.max(t >= 12 * 60 ? t : st, 11 * 60) / 5) * 5;
+        day.lunch = buildLunch(lunchStart, s.attr.district, day.index, usedNames, cfg.mealTier);
+        t = lunchStart + LUNCH_MIN + trMin + 10;
+        hadLunch = true;
+      } else {
+        t = st;
+      }
+      t = Math.round(t / 5) * 5;
+      timedStops.push({ start: t, end: t + dur, attr: s.attr, transit: tr });
+      t += dur + BUFFER;
+    }
+    day.stops = timedStops;
+
+    if (opts.enforceEvening !== false) {
+      const dropped = timedStops.filter(x => x.start >= 18 * 60 && !eveningFriendly(x.attr));
+      for (const x of dropped) timedStops.splice(timedStops.indexOf(x), 1);
+      dropped.forEach(x => opts.skipped && opts.skipped.push({ name: x.attr.name,
+        reason: '第 ' + day.index + ' 天排到该点时已过 18:00（不适宜夜间参观），建议自行替换' }));
+    }
+
+    if (!day.lunch && day.used >= 300 && day.anchor) {
+      day.lunch = buildLunch(12.5 * 60, day.anchor.district, day.index, usedNames, cfg.mealTier);
+      day.lunch.inline = timedStops.some(x => day.lunch.start >= x.start && day.lunch.end <= x.end);
+    }
+
+    const firstDistrict = Object.keys(activePack.DISTRICTS)[0];
+    const lastDistrict = timedStops.length ? timedStops[timedStops.length - 1].attr.district : firstDistrict;
+    day.dinner = buildDinner(lastDistrict, day.index, usedNames, cfg.mealTier);
+
+    if (cfg.hotel && cfg.hotel !== 'undecided' && day.anchor) {
+      const tr2 = transitFor(cfg.hotel, day.anchor.district);
+      if (tr2 && !day.notes.some(n => n.startsWith('从住宿区出发'))) day.notes.push('从住宿区出发：' + tr2.how + '，约 ' + tr2.m + ' 分钟。');
+    }
+    day.costPerPerson = day.stops.reduce((acc, x) => [acc[0] + x.attr.price[0], acc[1] + x.attr.price[1]], [0, 0]);
+    day.used = day.stops.reduce((sum, x) => sum + x.attr.duration * 60, 0);
+  }
+
   /* ---------------- 生成行程 ---------------- */
   function generatePlan(cfg, attractions) {
     cfg = Object.assign({ days: 3, group: 'couple', pace: 'standard', startDate: null,
@@ -3025,69 +3111,10 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
       if (mosques >= MAX_MOSQUES_PER_DAY) day.notes.push('当日已含 ' + mosques + ' 处' + relLabel + '，避免审美疲劳，不再叠加。');
       if (fullDay) day.notes.push(anchor.name + ' 为全天行程：请上午尽早出发，并留意返程交通的末班时间。');
 
-      // 3) 时间线：按"最近邻"重排当日顺序避免两岸横跳，9:00 起，正午插入午餐
-      const rest = day.stops.slice(1);
-      const chain = [day.stops[0]];
-      while (rest.length) {
-        let bi = 0, bm = Infinity;
-        for (let i = 0; i < rest.length; i++) {
-          const tr = transitFor(chain[chain.length - 1].attr.district, rest[i].attr.district);
-          const m = tr ? tr.m : 0; // 同区=步行级 0 分钟，不能落到跨区 fallback
-          if (m < bm) { bm = m; bi = i; }
-        }
-        chain.push(rest.splice(bi, 1)[0]);
-      }
-      day.stops = chain;
+      // 3-5) 排程（顺序/时间线/午餐/晚餐/成本）
+      scheduleDay(day, cfg, dinnerNamesUsed, { enforceEvening: true, skipped });
+      day.notes = day.notes.filter(n => !n.startsWith('✏️'));
 
-      let t = (day.anchor && day.anchor.bestTime === 'evening' ? 10.5 * 60 : DAY_START), hadLunch = false;
-      const timedStops = [];
-      for (let i = 0; i < day.stops.length; i++) {
-        const s = day.stops[i];
-        const dur = s.attr.fullDay ? 6.5 * 60 : s.attr.duration * 60;
-        const tr = i > 0 ? transitFor(timedStops[i - 1].attr.district, s.attr.district) : null;
-        const trMin = tr ? tr.m : 0;
-        const st = t + trMin;
-        if (!hadLunch && day.stops.length > 1 && i >= 1 && st + dur > 13 * 60) {
-          // 上一站结束已过正午就直接在原地吃（t），否则走到下一站附近吃（st）；最晚 ~13:30 开饭
-          const lunchStart = Math.round(Math.max(t >= 12 * 60 ? t : st, 11 * 60) / 5) * 5;
-          day.lunch = buildLunch(lunchStart, s.attr.district, day.index, dinnerNamesUsed, cfg.mealTier);
-          t = lunchStart + LUNCH_MIN + trMin + 10; // 午餐后完成转场+10 分钟步行缓冲，杜绝时间重叠
-          hadLunch = true;
-        } else {
-          t = st;
-        }
-        t = Math.round(t / 5) * 5; // 5 分钟取整，避免虚假精确
-        timedStops.push({ start: t, end: t + dur, attr: s.attr, transit: tr });
-        t += dur + BUFFER;
-      }
-      day.stops = timedStops;
-
-      // 4.5) 兜底：仍排到 18:00 后的非夜游项移入未安排（正常已被填充规则拦截）
-      const dropped = timedStops.filter(s => s.start >= 18 * 60 && !eveningFriendly(s.attr));
-      for (const s of dropped) timedStops.splice(timedStops.indexOf(s), 1);
-      dropped.forEach(s => skipped.push({ name: s.attr.name,
-        reason: '第 ' + day.index + ' 天排到该点时已过 18:00（不适宜夜间参观），建议自行替换' }));
-
-      // 4.4) 全天/长行程但未触发午餐插入的（如大岛独占日），补一条午餐建议；
-      //      若落在某个景点时间段内（如全天项目），标记 inline 改为日注记渲染，不占时间线
-      if (!day.lunch && day.used >= 300) {
-        day.lunch = buildLunch(12.5 * 60, day.anchor.district, day.index, dinnerNamesUsed, cfg.mealTier);
-        day.lunch.inline = timedStops.some(s => day.lunch.start >= s.start && day.lunch.end <= s.end);
-      }
-
-      // 4) 晚餐：当日末站分区轮转，正餐不重样
-      const firstDistrict = Object.keys(activePack.DISTRICTS)[0];
-      const lastDistrict = timedStops.length ? timedStops[timedStops.length - 1].attr.district : firstDistrict;
-      day.dinner = buildDinner(lastDistrict, day.index, dinnerNamesUsed, cfg.mealTier);
-
-      // 5) 出发提示
-      if (cfg.hotel && cfg.hotel !== 'undecided' && day.anchor) {
-        const tr = transitFor(cfg.hotel, day.anchor.district);
-        if (tr) day.notes.push('从住宿区出发：' + tr.how + '，约 ' + tr.m + ' 分钟。');
-      }
-      day.costPerPerson = day.stops.reduce((acc, s) => {
-        return [acc[0] + s.attr.price[0], acc[1] + s.attr.price[1]];
-      }, [0, 0]);
       // 自驾包：当日到访过的最远分区计入推进（fill 到过也算，避免下一日被锁死）
       for (const st of day.stops)
         if (routeIdx[st.attr.district] !== undefined) frontier = Math.max(frontier, routeIdx[st.attr.district]);
@@ -3140,6 +3167,78 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
       : '未指定出发日期，行程不含封馆日规避。';
   }
 
+
+  /* ---------------- 行程编辑（增删景点 + 推荐填补） ---------------- */
+  function refreshTotals(plan) {
+    const per = plan.days.reduce((acc, day) => [acc[0] + day.costPerPerson[0], acc[1] + day.costPerPerson[1]], [0, 0]);
+    plan.costPerPerson = { tickets: per };
+  }
+
+  function rescheduleDay(plan, day) {
+    const others = [];
+    plan.days.forEach(d => { if (d !== day) {
+      if (d.lunch) others.push(d.lunch.name);
+      if (d.dinner) others.push(d.dinner.name);
+    } });
+    day.notes = day.notes.filter(n => !n.startsWith('✏️') && !n.startsWith('从住宿区出发'));
+    scheduleDay(day, plan.cfg, others, { enforceEvening: false });
+    const cap = DAY_CAP_MIN[plan.cfg.pace] || DAY_CAP_MIN.standard;
+    const late = day.stops.filter(x => x.start >= 18 * 60 && !eveningFriendly(x.attr));
+    if (late.length) day.notes.push('✏️ 编辑后 ' + late.map(x => x.attr.name).join('、') + ' 开始已过 18:00，请自行确认开放时间。');
+    if (day.used > cap + SLACK) day.notes.push('✏️ 当日总量已超出所选节奏容量 ' + Math.round((day.used - cap) / 60) + ' 小时，建议再删一处或换天。');
+    refreshTotals(plan);
+  }
+
+  function applyRemove(plan, dayIndex, stopIndex) {
+    const day = plan.days[dayIndex];
+    if (!day || !day.stops[stopIndex]) return plan;
+    day.stops.splice(stopIndex, 1);
+    day.anchor = day.stops.length ? day.stops[0].attr : null;
+    if (!day.stops.length) day.notes = day.notes.filter(n => !n.startsWith('当日已含'));
+    rescheduleDay(plan, day);
+    return plan;
+  }
+
+  function applyAdd(plan, dayIndex, attr) {
+    const day = plan.days[dayIndex];
+    if (!day || !attr) return plan;
+    if (day.stops.some(x => x.attr.id === attr.id)) return plan;
+    day.stops.push({ attr, transit: null });
+    if (!day.anchor) day.anchor = attr;
+    rescheduleDay(plan, day);
+    return plan;
+  }
+
+  // 当日可填补的推荐候选：未用/未闭馆/人群适配>2/在路线窗口内，按契合度排序
+  function suggestFor(plan, dayIndex, attractions, limit) {
+    const cfg = plan.cfg, day = plan.days[dayIndex];
+    if (!day) return [];
+    const used = new Set(plan.days.flatMap(d => d.stops.map(x => x.attr.id)));
+    const routeIdx = {};
+    if (activePack && activePack.routeOrder) activePack.routeOrder.forEach((d, i) => { routeIdx[d] = i; });
+    let lo = -Infinity, hi = Infinity;
+    if (Object.keys(routeIdx).length) {
+      const idxs = day.stops.map(x => routeIdx[x.attr.district]).filter(x => x !== undefined);
+      if (idxs.length) { lo = Math.min.apply(null, idxs); hi = Math.max.apply(null, idxs) + 1; }
+      else {
+        const before = plan.days.slice(0, dayIndex).flatMap(d => d.stops.map(x => routeIdx[x.attr.district])).filter(x => x !== undefined);
+        const after = plan.days.slice(dayIndex + 1).flatMap(d => d.stops.map(x => routeIdx[x.attr.district])).filter(x => x !== undefined);
+        lo = before.length ? Math.max.apply(null, before) : 0;
+        hi = after.length ? Math.min.apply(null, after) + 1 : Object.keys(routeIdx).length - 1;
+      }
+    }
+    const cap = DAY_CAP_MIN[cfg.pace] || DAY_CAP_MIN.standard;
+    const freeMin = cap + SLACK - day.used;
+    const anchorDistrict = day.anchor ? day.anchor.district : null;
+    const cands = attractions
+      .filter(a => !used.has(a.id) && !closedOn(a, day.date)
+        && (!cfg.group || !a.groupFit || !a.groupFit[cfg.group] || a.groupFit[cfg.group] > 2)
+        && (routeIdx[a.district] === undefined || (routeIdx[a.district] >= lo && routeIdx[a.district] <= hi)))
+      .sort((x, y) => scoreAttraction(y, cfg, anchorDistrict, day.index - 1) - scoreAttraction(x, cfg, anchorDistrict, day.index - 1)
+        || (x.id < y.id ? -1 : 1));
+    return cands.slice(0, limit || 8).map(a => ({ attr: a, fits: a.duration * 60 <= freeMin + 90 }));
+  }
+
   /* ---------------- 预算与人数关系 ---------------- */
   function budgetSummary(plan, groupCfg, mealTier, transportMode) {
     const pk = pack();
@@ -3184,6 +3283,7 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
   }
 
   global.Planner = { generatePlan, budgetSummary, formatMin, transitFor, setPack,
+    applyRemove, applyAdd, suggestFor,
     DAY_CAP_MIN, MAX_MOSQUES_PER_DAY, WEEKDAYS_CN };
   if (typeof module !== 'undefined' && module.exports) module.exports = global.Planner;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -3331,6 +3431,14 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     ? (v[0] === 0 ? '免费' : '约 ' + v[0] + ' ' + cur().name)
     : '约 ' + v[0] + '–' + v[1] + ' ' + cur().name;
   const tlRangeEur = (v) => '≈ €' + (v[0] / cur().perEur).toFixed(0) + '–' + (v[1] / cur().perEur).toFixed(0);
+  function recomputeBudgetAndRerender() {
+    if (state.groupCfg) {
+      state.budget = P.budgetSummary(state.plan, state.groupCfg,
+        D.MEAL_TIERS[state.plan.cfg.mealTier] || D.MEAL_TIERS.comfort,
+        state.transportMode || Object.keys(D.TRANSPORT_MODES || {})[0] || 'public');
+    }
+    renderPlan();
+  }
   const fmtK = v => v[0] >= 10000
     ? `${Math.round(v[0] / 1000)}k–${Math.round(v[1] / 1000)}k ${cur().name}`
     : (v[0] >= 1000 ? `${Math.round(v[0] / 100) / 10}k–${Math.round(v[1] / 100) / 10}k ${cur().name}` : tlRange(v));
@@ -3541,8 +3649,9 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     const heads = g.adults + g.children6 + g.children712 + g.seniors;
     if (heads === 0) { g.adults = 1; }
     state.groupCfg = g;
+    state.transportMode = $('#p-transport').value;
     state.budget = P.budgetSummary(state.plan, g, D.MEAL_TIERS[$('#p-meal').value],
-      $('#p-transport').value);
+      state.transportMode);
     renderPlan();
    } catch (e) {
     console.error(e);
@@ -3559,11 +3668,15 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
 
     html += plan.warnings.map(w => `<div class="warnbox">⚠️ ${esc(w)}</div>`).join('');
 
-    html += plan.days.map(day => {
-      const items = day.stops.map(s => {
+    html += plan.days.map((day, di) => {
+      const sug = P.suggestFor(plan, di, D.ATTRACTIONS, 8);
+      const cap = P.DAY_CAP_MIN[plan.cfg.pace];
+      const freeH = Math.max(0, (cap + 30 - day.used) / 60).toFixed(1);
+      const items = day.stops.map((s, si) => {
         const a = s.attr;
         const tr = s.transit ? `<div class="tl-transit">🚏 从上一站：${esc(s.transit.how)} 约 ${s.transit.m} 分钟${s.transit.note ? '（' + esc(s.transit.note) + '）' : ''}</div>` : '';
         return { start: s.start, html: `<div class="tl-item">
+          <button class="rm no-print" data-day="${di}" data-stop="${si}" title="从这一天移除">✕</button>
           ${tr}
           <span class="tl-time">${P.formatMin(s.start)}–${P.formatMin(Math.round(s.end / 5) * 5)}</span>
           <span class="tl-name">${esc(a.name)}</span>
@@ -3587,6 +3700,14 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
         ${notes}
         <div class="tl">${stops}</div>
         ${dinner}
+        <div class="day-edit no-print">
+          <span class="free">今日余量约 ${freeH} 小时</span>
+          <button class="btn-mini" data-fill="${di}" ${sug.length && sug[0].fits ? '' : 'disabled'}>🧩 自动填补推荐</button>
+          <select class="add-select" data-day="${di}">
+            <option value="">＋ 从推荐中选择（${sug.length} 个可选）…</option>
+            ${sug.map(x => `<option value="${esc(x.attr.id)}">${esc(x.attr.name)} ｜ ${x.attr.duration}h ｜ ${x.fits ? '装得下' : '较满'}</option>`).join('')}
+          </select>
+        </div>
       </div>`;
     }).join('');
 
@@ -3617,6 +3738,25 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     document.querySelectorAll('.skip-link').forEach(a =>
       a.addEventListener('click', e => { e.preventDefault();
         switchTab('library'); resetLibraryFilters(a.dataset.name); }));
+    document.querySelectorAll('#plan-out .rm').forEach(b =>
+      b.addEventListener('click', () => { P.applyRemove(plan, +b.dataset.day, +b.dataset.stop);
+        recomputeBudgetAndRerender(); }));
+    document.querySelectorAll('#plan-out [data-fill]').forEach(b =>
+      b.addEventListener('click', () => {
+        const sug = P.suggestFor(plan, +b.dataset.fill, D.ATTRACTIONS, 8);
+        if (!sug.length) { toast('没有更多可推荐项了（都已排入或不适配）。', true); return; }
+        P.applyAdd(plan, +b.dataset.fill, sug[0].attr);
+        toast('🧩 已补入：<b>' + esc(sug[0].attr.name) + '</b>（不合适可再 ✕ 删除换下一个）');
+        recomputeBudgetAndRerender();
+      }));
+    document.querySelectorAll('#plan-out .add-select').forEach(sel =>
+      sel.addEventListener('change', () => {
+        if (!sel.value) return;
+        const a = D.ATTRACTIONS.find(x => x.id === sel.value);
+        P.applyAdd(plan, +sel.dataset.day, a);
+        toast('➕ 已加入：<b>' + esc(a.name) + '</b>');
+        recomputeBudgetAndRerender();
+      }));
     const p2 = $('#p-print2'); if (p2) p2.addEventListener('click', () => window.print());
     $('#plan-out').scrollIntoView({ behavior: 'smooth' });
   }
