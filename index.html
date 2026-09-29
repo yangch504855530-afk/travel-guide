@@ -2438,6 +2438,382 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
 
 </script>
 <script>
+/* ===== js/packs/dalaman-d400.js ===== */
+/* 城市包：达拉曼·D400 海岸自驾（土耳其绿松石海岸公路旅行）
+ * 适合取车后沿 D400 东行：达拉曼/达利安 → 费特希耶 → 萨克利肯特 → 卡尔坎 → 卡什 → 凯科夫 → 奥林波斯 → 安塔利亚
+ * 价格为 2025-26 里拉近似区间；驾车时长为点对点近似值（含 2023+ 新隧道通车后的 D400）。
+ */
+(function (global) {
+  const pack = {
+    id: 'dalaman-d400', country: '土耳其', city: '达拉曼·D400 海岸自驾',
+    badge: '自驾包',
+    currency: { name: '里拉', perEur: 48 },
+    overview: '土耳其绿松石海岸的传奇自驾线：达拉曼机场取车，沿 D400 一路向东——达利安的岩壁王陵、费特希耶的滑翔伞、厄吕代尼兹的蓝湖、卡什的碧海、凯科夫的沉没之城，最后在安塔利亚还车。纯驾驶约 330-360 公里，建议 4-7 天慢慢走；10 月白天 26-28°C、海温约 24°C 仍可下海。',
+    transportSubtitle: '自驾包：换乘矩阵 = 点对点驾车时长（D400 及支线，含新隧道）；油价与租车价为近似区间。',
+    religiousLabel: '古迹遗址',
+    transitPerRide: [30, 80],       // 每日杂项：停车/轮渡小额
+    taxiPerRide: [1800, 3500],      // 自驾模式 = 每日"租车+油费"综合成本
+    taxiPerCar: 5,
+    taxiLabel: '自驾车（5 座经济型）',
+    mixNote: '；按"日租金（900-1800）+ 日均油费（500-1200，按 D400 日均 60-120km）+ 停车"综合估算。异地还车单程费（达拉曼取/安塔利亚还约 1500-4000 里拉）未含，取车时确认。',
+    transportNotes: {
+      mix: '租车押金通常信用卡预授权 5000-15000 里拉（或 300-500 美元），退车后 2-4 周解冻；务必买全险（CDW+盗抢+玻璃胎）。',
+    },
+    budgetNotes: {
+      childFree: '0-6 岁儿童多数遗址/博物馆免票，船游与滑翔伞按儿童价或与成人同价（以运营方为准）。',
+      childHalf: '7-12 岁遗址/博物馆多为半价；船游一般 6 折上下，本估算按半价计入。',
+      senior: '外国游客 65+ 无老年折扣，按全价计。',
+      group6: '6 人以上：2 辆车或 1 辆 7-9 座（日租约为经济型 1.5-2 倍）；餐馆与船游包船反而更划算。',
+    },
+    districtLunchFallback: {},
+    routeOrder: ['dalaman', 'fethiye', 'saklikent', 'kalkan', 'kas', 'kekova', 'olympos', 'antalya'],
+    startDistrict: 'dalaman',
+    META: {
+      title: '达拉曼·D400 海岸自驾攻略工具',
+      subtitle: '自驾动线 · 游玩时长 · 人群适配 · 行程生成 · 预算估算',
+      disclaimer: '票价/油价/租金为 2025-26 里拉高通胀下的近似区间，行前以租车行与官方为准。',
+      season: '当季（10 月）：白天 26-28°C、夜晚 15-18°C、海温约 24°C 仍可下海；日落约 18:30，傍晚光线是 D400 最美的一段。雨季 11 月起，趁现在。',
+    },
+    GROUPS: {
+      solo:    { label: '独自旅行', icon: '🧍', desc: '一个人，说走就走' },
+      couple:  { label: '情侣/二人', icon: '💑', desc: '二人同行（自驾最舒适配置）' },
+      family:  { label: '亲子家庭', icon: '👨‍👩‍👧', desc: '带 6–12 岁孩子' },
+      elderly: { label: '带老人同行', icon: '👴', desc: '三代同行/老人体力有限' },
+      friends: { label: '朋友结伴', icon: '🧑‍🤝‍🧑', desc: '3–6 人好友团' },
+    },
+    PACE: {
+      relaxed:  { label: '轻松', icon: '🐢', hours: 6,  desc: '睡到自然醒，海滩日为主' },
+      standard: { label: '标准', icon: '🚶', hours: 8,  desc: '每天 1-2 镇 + 海滩' },
+      packed:   { label: '特种', icon: '⚡', hours: 9.5, desc: '多点赶路，赶在还车前刷完' },
+    },
+    INTERESTS: {
+      history: { label: '历史人文', icon: '🏛️', tag: '历史' },
+      food:    { label: '美食', icon: '🐟', tag: '美食' },
+      photo:   { label: '摄影', icon: '📷', tag: '摄影' },
+      kids:    { label: '亲子海滩', icon: '🏖️', tag: '海滩' },
+    },
+    HOTELS: {
+      undecided: { label: '还没定（边走边订）' },
+      fethiye:   { label: '费特希耶/厄吕代尼兹（前半程基地）' },
+      kas:       { label: '卡什（中段基地）' },
+      antalya:   { label: '安塔利亚/奥林波斯（后段基地）' },
+    },
+    MEAL_TIERS: {
+      economy: { label: '经济（路边小馆）', perDay: [250, 450] },
+      comfort: { label: '舒适（海景正餐）', perDay: [500, 900] },
+      premium: { label: '高端（卡尔坎/卡什精品餐厅）', perDay: [1200, 2500] },
+    },
+    TRANSPORT_MODES: {
+      mix: { label: '自驾（租车+油费+停车）', note: '5 人一车核算' },
+    },
+    DISTRICTS: {
+      dalaman:    { name: '达拉曼机场/达利安', icon: '🛬' },
+      fethiye:    { name: '费特希耶/厄吕代尼兹/卡亚寇伊', icon: '🪂' },
+      saklikent:  { name: '萨克利肯特峡谷/特洛斯', icon: '🏞️' },
+      kalkan:     { name: '卡尔坎/帕塔拉', icon: '🌅' },
+      kas:        { name: '卡什', icon: '🤿' },
+      kekova:     { name: '凯科夫/德姆雷', icon: '⛵' },
+      olympos:    { name: '奥林波斯/奇拉里', icon: '🔥' },
+      antalya:    { name: '安塔利亚老城', icon: '🏛️' },
+    },
+    TRANSIT: {
+      'dalaman|fethiye':    { m: 55,  how: '🚗 D400 东行 55km', note: '机场出来即上 D400' },
+      'dalaman|saklikent':  { m: 80,  how: '🚗 D400→支线内陆', note: '可顺路达利安' },
+      'dalaman|kalkan':     { m: 160, how: '🚗 D400 全程海岸', note: '中途费特希耶加油' },
+      'dalaman|kas':        { m: 185, how: '🚗 D400 全程海岸', note: '建议中途休息' },
+      'dalaman|kekova':     { m: 215, how: '🚗 D400', note: '一天赶完较累' },
+      'dalaman|olympos':     { m: 255, how: '🚗 D400', note: '过卡什后隧道群' },
+      'dalaman|antalya':    { m: 300, how: '🚗 D400→D650', note: '全程约 330km' },
+      'fethiye|saklikent':  { m: 45,  how: '🚗 D400 内陆支线', note: '先峡谷后特洛斯顺路' },
+      'fethiye|kalkan':     { m: 115, how: '🚗 D400 东行', note: '翻山段注意会车' },
+      'fethiye|kas':        { m: 135, how: '🚗 D400 东行', note: '莱顿/桑索斯岔口可顺访' },
+      'fethiye|kekova':     { m: 165, how: '🚗 D400', note: '卡什加油休整' },
+      'fethiye|olympos':     { m: 215, how: '🚗 D400', note: '' },
+      'fethiye|antalya':    { m: 260, how: '🚗 D400→安塔利亚', note: '全程约 300km' },
+      'saklikent|kalkan':   { m: 90,  how: '🚗 支线回 D400 东行', note: '' },
+      'saklikent|kas':      { m: 110, how: '🚗 D400 东行', note: '' },
+      'saklikent|kekova':   { m: 140, how: '🚗 D400', note: '' },
+      'saklikent|olympos':   { m: 190, how: '🚗 D400', note: '' },
+      'saklikent|antalya':  { m: 235, how: '🚗 D400', note: '' },
+      'kalkan|kas':         { m: 30,  how: '🚗 D400 27km（含隧道）', note: '卡普塔斯海滩就在中途' },
+      'kalkan|kekova':      { m: 60,  how: '🚗 D400 东行', note: 'Üçağız 岔口左转' },
+      'kalkan|olympos':      { m: 115, how: '🚗 D400', note: '' },
+      'kalkan|antalya':     { m: 165, how: '🚗 D400', note: '' },
+      'kas|kekova':         { m: 40,  how: '🚗 D400 35km', note: '新隧道已通车' },
+      'kas|olympos':         { m: 95,  how: '🚗 D400', note: '德姆雷后海岸段' },
+      'kas|antalya':        { m: 140, how: '🚗 D400→安塔利亚', note: '' },
+      'kekova|olympos':      { m: 60,  how: '🚗 D400 东行', note: '经德姆雷圣尼古拉斯' },
+      'kekova|antalya':     { m: 105, how: '🚗 D400', note: '' },
+      'olympos|antalya':     { m: 50,  how: '🚗 D400→D400 北上', note: '还车前留足时间' },
+    },
+    ATTRACTIONS: [
+      { id: 'dalyan-kaunos', name: '达利安王陵与考诺斯古城', local: 'Dalyan Kaya Mezarları & Kaunos', district: 'dalaman', category: 'mosque',
+        desc: '河对岸的利西亚岩壁王陵+一座被芦苇掩埋的古城，小渡船摇过去，10 分钟穿越两千年。',
+        duration: 2, bestTime: 'morning', closedDays: [], price: [200, 400], priceNote: '渡船另收小额船费',
+        groupFit: { solo: 4, couple: 5, family: 4, elderly: 4, friends: 4 }, priority: 2,
+        tags: ['历史', '摄影'], transport: '🚗 达拉曼机场沿 D400 车程约 25-35 分钟；达利安镇码头乘小渡船过河',
+        tips: ['清晨光线打在崖壁王陵上最好看，也避开河上正午暴晒', '古城内有罗马浴场与剧场，全程无遮挡，戴帽带水'] },
+      { id: 'iztuzu-beach', name: '伊兹图祖海龟海滩', local: 'İztuzu Plajı', district: 'dalaman', category: 'waterfront',
+        desc: '4.5 公里长的沙洲海滩，地中海与淡水河各占一边，红海龟产卵地——土耳其最温柔的海滩。',
+        duration: 3, bestTime: 'afternoon', closedDays: [], price: [300, 600],
+        priceNote: '含达利安乘船往返（也可自驾从北口进）',
+        groupFit: { solo: 4, couple: 5, family: 5, elderly: 4, friends: 4 }, priority: 2,
+        tags: ['海滩', '摄影', '历史'], transport: '🚗 自驾北口停车场，或达利安码头乘河船 40 分钟（沿途看王陵）',
+        tips: ['5-10 月为产卵季，20:00-08:00 禁止进入沙洲段，白天也请勿搭沙堡挖坑', '河船往返本身就是一段湿地游，乌龟和水鸟常客', '海滩只有一家小店，自带水和零食'] },
+      { id: 'dalyan-mudbath', name: '达利安泥浆浴', local: 'Dalyan Çamur Banyosu', district: 'dalaman', category: 'experience',
+        desc: '泡进温热矿泥再晒干刮掉——土国版"换皮"体验，全程又土又快乐。',
+        duration: 1.5, bestTime: 'any', closedDays: [], price: [300, 600], priceNote: '',
+        groupFit: { solo: 3, couple: 4, family: 4, elderly: 3, friends: 5 }, priority: 1,
+        tags: ['海滩'], transport: '达利安镇内，河船或步行可达',
+        tips: ['穿深色泳衣，白衣服洗不回来；首饰摘掉', '高血压/孕妇不建议；带老人的家庭看情况跳过'] },
+      { id: 'oludeniz', name: '厄吕代尼兹蓝湖海滩', local: 'Ölüdeniz Plajı', district: 'fethiye', category: 'waterfront',
+        desc: 'D400 的明信片：一湾不结冰的"死海"蓝湖，身后是巴巴达格的 1700 米绝壁——滑翔伞就从那上面跳下来。',
+        duration: 3, bestTime: 'morning', closedDays: [], price: [250, 500], priceNote: '公共海滩入场费；躺椅伞另付',
+        groupFit: { solo: 4, couple: 5, family: 5, elderly: 5, friends: 5 }, priority: 3,
+        tags: ['海滩', '摄影'], transport: '🚗 费特希耶沿 D400 南下 20 分钟，蓝湖停车场早 10 点后一位难求',
+        tips: ['上午水色最透，下午逆光拍照发灰', '湖海之间的沙洲走过去就是 Public Beach，比私营业区便宜', '10 月水温约 24°C，游泳刚好'] },
+      { id: 'babadag-paragliding', name: '巴巴达格滑翔伞', local: 'Babadağ Yamaç Paraşütü', district: 'fethiye', category: 'experience',
+        desc: '从 1700 米悬崖起跳，与教练双人飞 25-40 分钟，在滑翔伞上看蓝湖与 D400 海岸——世界级的飞行体验。',
+        duration: 2.5, bestTime: 'morning', closedDays: [], price: [3200, 5500],
+        priceNote: '双人飞行（含视频照片通常另收 400-800）',
+        groupFit: { solo: 5, couple: 5, family: 2, elderly: 2, friends: 5 }, priority: 3,
+        tags: ['摄影'], transport: '🚗 厄吕代尼兹镇上的运营商柜台接送到山顶',
+        tips: ['早班风稳成功率高；恐高/孕妇/心脏病不飞', '运动鞋+防风外套（山顶比海边的冷）；GoPro 让教练拍', '选有资质的大公司（Sky Sports/Holiday 等），价格含保险但请确认条款'] },
+      { id: 'kayakoy', name: '卡亚寇伊鬼城', local: 'Kayaköy Terk Edilmiş Köy', district: 'fethiye', category: 'mosque',
+        desc: '1923 年人口交换后空置的石屋山村，几百栋无顶石房趴在山坡上，时间凝固的希腊-土耳其往事。',
+        duration: 2.5, bestTime: 'morning', closedDays: [], price: [100, 250], priceNote: '',
+        groupFit: { solo: 4, couple: 5, family: 3, elderly: 3, friends: 4 }, priority: 2,
+        tags: ['历史', '摄影'], transport: '🚗 费特希耶/厄吕代尼兹上山 20-30 分钟山路',
+        tips: ['石屋群里穿行注意松动的墙和台阶；坡度不小，带老人量力', '村里的 Cistern 咖啡馆和几家小餐厅是歇脚好去处'] },
+      { id: 'fethiye-fishmarket', name: '费特希耶鱼市场', local: 'Balık Pazarı', district: 'fethiye', category: 'bazaar',
+        desc: '自己挑鱼虾，隔壁餐馆付加工费做成一桌——晚餐人均不到一半的"海鲜自助"。',
+        duration: 2, bestTime: 'evening', openLate: true, closedDays: [], price: [0, 0], priceNote: '免费进入（鱼价+加工另计）',
+        groupFit: { solo: 4, couple: 5, family: 4, elderly: 5, friends: 5 }, priority: 2,
+        tags: ['美食'], transport: '🚗 老城 Paspatur 步行区旁有付费停车场，傍晚车位紧张',
+        tips: ['先绕一圈比价再下手；加工费每家明码（每公斤或每道）', '傍晚 7 点后热闹，配合老城 harbor 散步正好'] },
+      { id: 'faralya-butterfly', name: '法拉利亚与蝴蝶谷', local: 'Faralya & Kelebekler Vadisi', district: 'fethiye', category: 'viewpoint',
+        desc: 'D400 出厄吕代尼兹后最壮丽的海崖段：俯瞰蝴蝶谷的悬崖观景台，胆子大可下谷到底的隐蔽海滩。',
+        duration: 2, bestTime: 'afternoon', closedDays: [], price: [0, 0], priceNote: '观景免费；下谷有偿向导（坡陡慎行）',
+        groupFit: { solo: 4, couple: 5, family: 2, elderly: 2, friends: 4 }, priority: 1,
+        tags: ['摄影', '海滩'], transport: '🚗 D400 沿途观景台即停即看；下谷路径陡且有绳段',
+        tips: ['不下谷的话观景台 20 分钟足够，是 D400 最出片机位之一', '正午后顺光；日落前半小时更美'] },
+      { id: 'saklikent-gorge', name: '萨克利肯特大峡谷', local: 'Saklıkent Kanyonu', district: 'saklikent', category: 'viewpoint',
+        desc: '300 米深的石灰岩裂缝，冰河水中步行 4 公里的"天然空调"峡谷——夏天最爽的一站。',
+        duration: 2.5, bestTime: 'morning', closedDays: [], price: [150, 350], priceNote: '涉水段可租水鞋',
+        groupFit: { solo: 4, couple: 4, family: 4, elderly: 3, friends: 5 }, priority: 2,
+        tags: ['海滩', '摄影'], transport: '🚗 费特希耶内陆支线 45 分钟，停车场就在谷口',
+        tips: ['10 月水凉但可走；入口 500 米木栈道老人友好，再往里要涉水', '配合特洛斯古城同天玩正好（顺路 25 分钟）'] },
+      { id: 'tlos', name: '特洛斯古城', local: 'Tlos Antik Kenti', district: 'saklikent', category: 'mosque',
+        desc: '利西亚最古老的城市之一：山头的城堡俯瞰整个山谷，体育场与岩墓保存完好，游客却很少。',
+        duration: 1.5, bestTime: 'morning', closedDays: [], price: [100, 250], priceNote: '',
+        groupFit: { solo: 4, couple: 4, family: 3, elderly: 3, friends: 4 }, priority: 1,
+        tags: ['历史', '摄影'], transport: '🚗 萨克利肯特峡谷 25 分钟，山路上有一段窄弯',
+        tips: ['城堡段台阶无护栏，恐高止步半坡也能看全景', '与峡谷同日安排：先峡谷（趁凉）后特洛斯'] },
+      { id: 'patara', name: '帕塔拉海滩与古城', local: 'Patara Plajı & Antik Kent', district: 'kalkan', category: 'waterfront',
+        desc: '18 公里长的连绵沙丘海滩+被沙丘半埋的利西亚首都遗址，日落时分的沙丘是全海岸最浪漫的画面。',
+        duration: 3.5, bestTime: 'afternoon', closedDays: [], price: [200, 400], priceNote: '海滩+遗址联票',
+        groupFit: { solo: 4, couple: 5, family: 5, elderly: 4, friends: 4 }, priority: 2,
+        tags: ['海滩', '历史', '摄影'], transport: '🚗 卡尔坎 20 分钟 / 卡什 40 分钟；入口到海滩还有 3km 内部道',
+        tips: ['产卵季（5-10 月）夜间关闭，白天避开沙丘植被区', '傍晚去：先逛遗址（有树荫）再上海滩等日落', '海滩没有遮阳设施，自带伞和水'] },
+      { id: 'kalkan-oldtown', name: '卡尔坎老城黄昏', local: 'Kalkan Merkez', district: 'kalkan', category: 'neighborhood',
+        desc: '白色山城叠在碧海湾上：屋顶餐厅的落日 dinner、窄巷里的精品店——D400 沿线最"度假感"的一晚。',
+        duration: 2, bestTime: 'evening', openLate: true, closedDays: [], price: [0, 0], priceNote: '免费（吃喝另计）',
+        groupFit: { solo: 3, couple: 5, family: 3, elderly: 4, friends: 4 }, priority: 1,
+        tags: ['美食', '摄影'], transport: '🚗 老城入口有公共停车场，巷内禁行',
+        tips: ['屋顶餐厅旺季建议预订；看日落到 19 点后', '与帕塔拉同日组合：下午海滩→日落回城'] },
+      { id: 'kas-oldtown', name: '卡什老城与海港', local: 'Kaş Merkez', district: 'kas', category: 'neighborhood',
+        desc: '希腊风小白巷+碧蓝双港，对岸就是希腊小岛梅伊斯——整条 D400 最让人想留下的镇子。',
+        duration: 3, bestTime: 'evening', openLate: true, closedDays: [], price: [0, 0], priceNote: '免费',
+        groupFit: { solo: 5, couple: 5, family: 4, elderly: 5, friends: 5 }, priority: 3,
+        tags: ['美食', '摄影', '海滩'], transport: '🚗 镇外有几个公共停车场，老城步行',
+        tips: ['Züğürt Ağa 等老牌餐馆旺季排队，8 点前到', '清晨的双港+对岸梅伊斯岛是摄影黄金档', '老城适合买手工与香料伴手礼'] },
+      { id: 'kaputas-beach', name: '卡普塔斯海滩', local: 'Kaputaş Plajı', district: 'kas', category: 'waterfront',
+        desc: '峡谷口吞进的一汪蓝绿色新月湾，D400 公路正上方的网红机位，187 级台阶下到沙。',
+        duration: 1.5, bestTime: 'morning', closedDays: [], price: [0, 100], priceNote: '免费或象征性收费；无躺椅',
+        groupFit: { solo: 4, couple: 5, family: 3, elderly: 2, friends: 5 }, priority: 3,
+        tags: ['海滩', '摄影'], transport: '🚗 卡什西 20 分钟 D400 路边停车+台阶下撤',
+        tips: ['9 点前到才有车位和"独享"感；正午人多浪大', '187 级台阶上下对膝盖不友好，老人可只在崖顶机位拍照', '无商店无遮阳，自带水和防滑鞋'] },
+      { id: 'kas-diving', name: '卡什潜水体验', local: 'Kaş Dalış', district: 'kas', category: 'experience',
+        desc: '土耳其的潜水之都：能见度 30 米+，沉船、峡谷与古沉船考古点，新手体验潜也友好。',
+        duration: 3.5, bestTime: 'morning', closedDays: [], price: [1800, 3500],
+        priceNote: '含教练/装备的双体验潜；OW 考证另询',
+        groupFit: { solo: 5, couple: 5, family: 2, elderly: 1, friends: 5 }, priority: 1,
+        tags: ['海滩', '摄影'], transport: '🚗 卡什港各潜水店集合出海',
+        tips: ['10 月水温约 24-25°C，3mm 湿衣刚好', '体验潜前 24 小时别飞行计划（和滑翔伞同理别同日排）', '选 PADI/SSI 正规店，确认保险覆盖'] },
+      { id: 'meis-ferry', name: '梅伊斯岛一日（希腊）', local: 'Meis/Kastellorizo Day Trip', district: 'kas', category: 'experience',
+        desc: '卡什港乘渡轮 25 分钟到希腊最小岛 Kastellorizo：彩色的港、《地中海》取景地、蓝洞。',
+        duration: 3, bestTime: 'morning', closedDays: [], price: [1200, 2500],
+        priceNote: '往返渡轮；需有效申根签证（两次入境），无签证勿订',
+        groupFit: { solo: 4, couple: 5, family: 3, elderly: 4, friends: 4 }, priority: 1,
+        tags: ['摄影', '美食'], transport: '⛴️ 卡什港渡轮，护照+申根签检查',
+        tips: ['中国护照需要申根签证且须支持再次入境土耳其（土 e-visa 通常多次）——没签证就跳过这站', '渡轮时刻上午去下午回，岛上步行即可'] },
+      { id: 'kekova-boat', name: '凯科夫沉没之城船游', local: 'Kekova Batık Şehir Tekne Turu', district: 'kekova', category: 'waterfront',
+        desc: '船开过半沉入水下的利西亚古城墙与地基，再登只有步行/驴船可达的西梅纳城堡——D400 的灵魂一日。',
+        duration: 4, bestTime: 'morning', closedDays: [], price: [700, 1400],
+        priceNote: 'Üçağız 出发半日船；含 Simena 停靠',
+        groupFit: { solo: 4, couple: 5, family: 5, elderly: 5, friends: 5 }, priority: 3,
+        tags: ['历史', '海滩', '摄影'], transport: '🚗 Üçağız 渔村码头（卡什 40 分钟 / 卡尔坎 60 分钟）',
+        tips: ['沉城水域禁止游泳与靠近，只能船上观览', '包船(4-8 人)与拼船价差大，淡季可谈到拼船价的一半包下整船', '带泳衣：船会停在允许下水的小湾'] },
+      { id: 'simena-castle', name: '西梅纳城堡（卡莱柯伊）', local: 'Simena Kaleköy', district: 'kekova', category: 'viewpoint',
+        desc: '小山顶的拜占庭城堡俯瞰整个凯科夫湾，村里的"国王浴池"半泡在海里——无车村的原始感保留至今。',
+        duration: 1.5, bestTime: 'any', closedDays: [], price: [80, 200], priceNote: '',
+        groupFit: { solo: 4, couple: 5, family: 3, elderly: 3, friends: 4 }, priority: 1,
+        tags: ['历史', '摄影'], transport: '船游停靠或 Üçağız 步行/小船进村',
+        tips: ['上城堡台阶陡且滑，穿防滑鞋；村口冰淇淋值得等', '通常包含在凯科夫船游行程里，不必单独安排'] },
+      { id: 'myra-stnick', name: '米拉古城与圣尼古拉斯教堂', local: 'Myra & Aziz Nikolaos', district: 'kekova', category: 'mosque',
+        desc: '崖壁立面如木偶戏台的利西亚岩墓+保存完好的罗马剧场；隔壁就是"圣诞老人"原型圣尼古拉斯的主教教堂。',
+        duration: 2, bestTime: 'morning', closedDays: [], price: [200, 400], priceNote: '两处分别购票',
+        groupFit: { solo: 4, couple: 4, family: 4, elderly: 4, friends: 3 }, priority: 1,
+        tags: ['历史'], transport: '🚗 德姆雷镇边，D400 主路过；停车场充足',
+        tips: ['正午暴晒，趁早或赶傍晚；两处步行 10 分钟相连', '与凯科夫船游同日顺路（Üçağız 20 分钟）'] },
+      { id: 'olympos-ruins', name: '奥林波斯遗址海滩', local: 'Olympos Antik Kenti', district: 'olympos', category: 'mosque',
+        desc: '穿过无花果与月桂覆盖的古城残柱走到溪口海滩——树屋营地文化的发源地，年轻人的乌托邦。',
+        duration: 2, bestTime: 'morning', closedDays: [], price: [150, 300], priceNote: '',
+        groupFit: { solo: 4, couple: 4, family: 3, elderly: 3, friends: 5 }, priority: 1,
+        tags: ['历史', '海滩'], transport: '🚗 D400 岔口下到谷底停车场，步行进遗址',
+        tips: ['遗址步道约 20 分钟到海滩，树荫多但路面不平', '树屋营地（Kadir`s 等）住一晚是特色体验，旺季提前订'] },
+      { id: 'chimaera', name: '奇美拉永恒之火', local: 'Yanartaş Chimera', district: 'olympos', category: 'viewpoint',
+        desc: '山坡上天然渗出的甲烷火苗烧了几千年，古人在此建庙祭火神——夜幕下的"地火"魔法时刻。',
+        duration: 1.5, bestTime: 'evening', openLate: true, closedDays: [], price: [100, 250], priceNote: '',
+        groupFit: { solo: 4, couple: 5, family: 4, elderly: 2, friends: 5 }, priority: 2,
+        tags: ['摄影', '历史'], transport: '🚗 Çıralı 村口上山，停车场后步行 20-30 分钟石阶',
+        tips: ['日落前 1 小时出发上山，天黑正好看火；带手电下山', '台阶较陡，老人小孩量力；传说配一瓶红酒更佳'] },
+      { id: 'kaleici', name: '安塔利亚老城卡雷奇', local: 'Kaleiçi', district: 'antalya', category: 'neighborhood',
+        desc: '罗马-奥斯曼-奥斯曼混血老城：哈德良门、凹凸的石板巷、柑橘树与屋顶餐厅——D400 终点的完美句号。',
+        duration: 2.5, bestTime: 'evening', openLate: true, closedDays: [], price: [0, 0], priceNote: '免费',
+        groupFit: { solo: 5, couple: 5, family: 4, elderly: 5, friends: 4 }, priority: 2,
+        tags: ['历史', '美食', '摄影'], transport: '🚗 老城边缘停车场（Karaalioğlu 公园旁），巷内步行',
+        tips: ['还车前把行李寄存车行/酒店再逛老城', '日落去 Karaalioğlu 公园海崖看地中海；老城适合最后一晚的告别晚餐'] },
+      { id: 'antalya-museum', name: '安塔利亚博物馆', local: 'Antalya Müzesi', district: 'antalya', category: 'museum',
+        desc: '土耳其最好的省级博物馆之一：奥林波斯/佩尔盖搬来的众神雕像列队大厅，给整条 D400 的历史做个总复习。',
+        duration: 2, bestTime: 'morning', closedDays: [1], price: [300, 500], priceNote: '周一闭馆',
+        groupFit: { solo: 5, couple: 4, family: 3, elderly: 4, friends: 3 }, priority: 1,
+        tags: ['历史'], transport: '🚗 老城西 10 分钟，有专用停车场',
+        tips: ['把沿线看过的遗址在这里"对答案"格外有感觉', '冷气很足，还车前的中转避暑好选择'] },
+    ],
+    FOODS: [
+      { name: '费特希耶鱼市场自选代工', where: 'Balık Pazarı', district: 'fethiye', price: [400, 800],
+        note: '自己挑海鲜隔壁加工，比海景餐厅便宜一半' },
+      { name: 'Kumrucu 烤鸡三明治', where: '厄吕代尼兹路边名店', district: 'fethiye', price: [120, 220], noDinner: true,
+        note: '整只烤鸡+奶酪塞面包，自驾随手午餐' },
+      { name: '达利安河鱼餐厅', where: 'Dalyan 河畔', district: 'dalaman', price: [350, 700],
+        note: '河景+当日渔获，配合河船行程' },
+      { name: '路边 Gözleme 现烙饼', where: 'D400 沿途山村路边摊', district: 'any', price: [80, 180], noDinner: true,
+        note: '老太太柴火现烙的土豆/奶酪饼，比餐厅香' },
+      { name: '卡尔坎屋顶海鲜 meze', where: 'Kalkan 老城', district: 'kalkan', price: [600, 1200], noLunch: true,
+        note: '日落晚餐正主，屋顶位要订' },
+      { name: '卡什石窑餐与 tarhana', where: 'Kaş 老城', district: 'kas', price: [250, 500],
+        note: 'Züğürt Ağa 老牌石窑，酸奶汤是本地味' },
+      { name: '树屋营地晚餐', where: 'Çıralı/Olympos 树屋', district: 'olympos', price: [300, 600], noLunch: true,
+        note: '营地家庭式套餐，配火堆和猫' },
+      { name: '安塔利亚 piyaz 与烤肉', where: '老城 Kaleiçi', district: 'antalya', price: [180, 350],
+        note: '白豆芝麻酱配烤肉串，本地人日常' },
+      { name: 'D400 咖啡与土耳其软糖', where: '沿途观景台咖啡馆', district: 'any', price: [60, 150], noLunch: true, noDinner: true,
+        note: '开着开着就停下喝一杯，是 D400 的正确节奏' },
+      { name: '萨克利肯特鳟鱼餐厅', where: '峡谷口河畔 alabalık 餐厅', district: 'saklikent', price: [250, 450],
+        note: '冰河水养的鳟鱼现烤，配峡谷行程' },
+      { name: 'Üçağız 渔村炒虾鱿鱼', where: '凯科夫 Üçağız 码头', district: 'kekova', price: [300, 600],
+        note: '船游回来码头就是厨房' },
+      { name: 'D400 村庄家常菜馆', where: '沿途小镇 lokanta', district: 'any', price: [180, 350],
+        note: '称重自助+炖菜汤饭，午餐万能解' },
+      { name: 'Maraş 冰淇淋', where: '沿途小镇', district: 'any', price: [60, 150], noLunch: true, noDinner: true,
+        note: '弹性冰淇淋表演，孩子最爱' },
+    ],
+    TRANSPORT_GUIDE: [
+      { icon: '🚗', title: '达拉曼机场取车（最重要的一步）', items: [
+        '国际连锁（Avis/Hertz/Budget 等）与本地行（Essence/Circular/Garenta 等）都在到达厅；本地行便宜 20-40% 但验车要更仔细',
+        '押金：信用卡预授权约 5000-15000 里拉（或 300-500 美元），退车后 2-4 周解冻——务必用信用卡而非借记卡',
+        '保险：直接买"全险"（CDW+盗抢+玻璃轮胎，零起赔额最好）；第三方平台预订的全险条款取车时再核一遍',
+        '取车时绕车 360° 拍视频（含玻璃/胎壁/内饰/油表），当场把划伤写进合同——还车扯皮全靠这个',
+        '中国驾照：土耳其官方只认国际驾照 IDP（中国非公约国），但多数租车行接受"中国驾照+英文翻译公证/翻译件"放行——出险时保险公司可能以此打折拒赔，买全险+谨慎驾驶是唯一对冲，自行权衡',
+        '确认行车证（Ruhsat）在车内、24h 救援电话贴在挡风玻璃上；加满油还车规则（同取同还）' ] },
+      { icon: '🛣️', title: 'D400 路况与驾驶习惯', items: [
+        '全程免费无收费站（土耳其高速公路才需 HGS 贴片，本线路用不到）',
+        '费特希耶—卡什段翻山弯多，2023+ 新隧道通车后已好开很多；仍要防对向借道超车',
+        '公路上随时窜出山羊/绵羊群——看到畜群鸣笛减速等待，别按着催',
+        '黄昏到夜间尽量避免赶路：无路灯+野猪+行人；日落约 18:30，17 点后就该找住宿了',
+        '土耳其司机风格较冲，城区环岛让右侧；鸣笛是打招呼不是骂人',
+        '限速：D400 多为 70-90 km/h，测速（Trafik Polis 与移动雷达）在城镇入口常见' ] },
+      { icon: '⛽', title: '油费与加油', items: [
+        '柴油（Motorin）与汽油（Benzin）2025-26 每升约 48-58 里拉，波动大，看到低价就加',
+        '经济型柴油车满箱约 2000-3200 里拉；D400 全线（达拉曼→安塔利亚约 330-360km）单程一箱半以内',
+        '加油站（Petrol Ofisi/Opet/Shell 等）密布，自助+工作人员帮你加，刷卡普遍可用',
+        '费特希耶、卡什、德姆雷是顺路的补给点；进凯科夫 Üçağız 前先加满' ] },
+      { icon: '🅿️', title: '停车 / 还车 / 单程费', items: [
+        '老城（卡什/卡尔坎/卡雷奇）巷内禁停，用镇口公共停车场（约 50-150 里拉/次）',
+        '海滩停车场 10 点后爆满：卡普塔斯、厄吕代尼兹都要赶早',
+        '达拉曼取车→安塔利亚还车属异地还车，通常加收单程费 1500-4000 里拉——下单时看清，取车时再确认一次',
+        '还车前拍满油表+里程+全车视频；预留 30 分钟验车时间' ] },
+      { icon: '📱', title: '导航 / 应急 / 随身', items: [
+        'Google Maps 离线下载"Antalya/Fethiye/Kaş"三个区域；石油小镇名记土耳其拼写（Üçağız/Çıralı/Kalkan）',
+        '紧急电话 112（土耳其统一）；车行 24h 热线在租车合同上；爆胎/事故先拍照再挪车',
+        '现金备 2000-3000 里拉零钱：停车、路边摊、小加油站刷卡机"坏了"是日常',
+        '中国驻伊斯坦布尔总领馆领保 +86-10-12308；领事直通车小程序可报备行程' ] },
+    ],
+    ROUTE_TABLE: [
+      ['达拉曼机场 → 费特希耶', '🚗 D400 东行 55km', '约 55 分钟', '无过路费'],
+      ['费特希耶 → 萨克利肯特峡谷', '🚗 D400→内陆支线', '约 45 分钟', '无过路费'],
+      ['费特希耶 → 卡尔坎/帕塔拉', '🚗 D400 东行翻山', '约 115 分钟', '无过路费'],
+      ['卡尔坎 → 卡什', '🚗 D400 27km（含隧道）', '约 30 分钟', '中途卡普塔斯海滩'],
+      ['卡什 → 凯科夫(Üçağız)', '🚗 D400 35km', '约 40 分钟', '出发前卡什加满油'],
+      ['凯科夫 → 奥林波斯/奇拉里', '🚗 D400 东行经德姆雷', '约 60 分钟', '顺路米拉古城'],
+      ['奥林波斯 → 安塔利亚', '🚗 D400 北上', '约 80-90 分钟', '还车预留 30 分钟验车'],
+      ['全程 达拉曼 → 安塔利亚', '🚗 D400 一段到底', '纯驾驶约 5.5-6.5 小时', '建议拆 4-7 天'],
+    ],
+    TIPS: [
+      { icon: '🛂', title: '证件与驾照（自驾特别版）', points: [
+        '护照+土耳其电子签（e-visa 多次入境通常 30 天，确认你的签证类型支持再次入境）',
+        '中国驾照+翻译件在多数租车行可取车，但法律与保险层面存在灰色地带——全险是最实际的对冲',
+        '建议把护照、驾照、租车合同拍照存云端+打印一份放车里' ] },
+      { icon: '🐢', title: '生态保护红线', points: [
+        'İztuzu 与帕塔拉是红海龟产卵地（5-10 月）：夜间禁入、白天不搭沙堡不挖坑、带走所有垃圾',
+        '凯科夫沉没之城水域禁止游泳与抛锚靠近，只能船上观览',
+        '海滩塑料袋/烟头入桶——罚款是真罚' ] },
+      { icon: '🌦️', title: '10 月海岸天气', points: [
+        '白天 26-28°C、夜晚 15-18°C：短袖+薄外套，泳衣照带（海温约 24°C）',
+        '10 月底开始转雨季，山区夜雨常见；出发看一眼 Kaş/Fethiye 天气',
+        '紫外线仍强，海滩无遮阳是常态，防晒霜+帽子+水' ] },
+      { icon: '💰', title: '消费与砍价', points: [
+        '船游（凯科夫/达利安）淡季可谈到标价 6-7 折，包船按人头摊更划算',
+        '鱼市场先比价；餐馆明码标价不砍价，但送红茶是惯例',
+        '加油站/停车场/小店备现金；大额刷卡（Visa/Master）',
+        '小费：餐馆 5-10%，加油站小哥帮忙 10-20 里拉' ] },
+      { icon: '🦺', title: '安全与应急', points: [
+        '白天赶路、黄昏前到住宿是 D400 的铁律；夜路=野猪+无灯行人',
+        '车辆故障/事故：开双闪-拍照-挪车-112-车行电话，流程走完再谈别的',
+        '海滩游泳注意旗子与风：10 月偶有南方涌浪，无人看管海滩别逞强',
+        '重要号码存手机：112 / 车行 24h / 酒店；领保热线 +86-10-12308' ] },
+      { icon: '🗺️', title: '动线建议（怎么住）', points: [
+        '经典 5-7 天：达拉曼(取车)→达利安半日→费特希耶/厄吕代尼兹 2 晚→萨克利肯特半日→卡尔坎或卡什 2 晚→凯科夫半日→奥林波斯/奇拉里 1 晚→安塔利亚还车',
+        '时间紧 3-4 天：跳过内陆（萨克利肯特/特洛斯），达利安+蓝湖+卡什+凯科夫保底',
+        '本工具按"景点分数+同镇聚类"排日，跨镇的两天之间就是换住宿的驾车日——对照上面动线微调即可',
+        '旺季（7-8 月）住宿提前订；10 月是淡季尾巴，边走边订也有惊喜价' ] },
+    ],
+    QUICK_FACTS: [
+      { icon: '🚗', k: '驾驶', v: '靠右行驶，D400 全程免费' },
+      { icon: '⛽', k: '油价', v: '柴油约 48-58 里拉/升' },
+      { icon: '⏰', k: '时差', v: '比北京慢 5 小时' },
+      { icon: '🚨', k: '紧急', v: '112 ｜ 领保 +86-10-12308' },
+      { icon: '🌦️', k: '10月', v: '26-28°C，海温 24°C' },
+      { icon: '💳', k: '押金', v: '信用卡预授权 5-15k 里拉' },
+    ],
+    HOWTO: [
+      { icon: '1️⃣', text: '「景点库」按沿途城镇筛选，看清每个点的建议时长和怎么开车去' },
+      { icon: '2️⃣', text: '「行程规划」填天数/人群/节奏 → 生成逐日动线+自驾预算（租车/油费已并入交通）' },
+      { icon: '3️⃣', text: '出发前把「交通指南」取车/D400 路况/生态红线三条过一遍' },
+    ],
+    TOP_PICKS: ['oludeniz', 'babadag-paragliding', 'kayakoy', 'saklikent-gorge', 'patara', 'kaputas-beach', 'kas-oldtown', 'kekova-boat', 'chimaera'],
+    CATEGORIES: {
+      mosque: '古迹遗址', palace: '宫殿', museum: '博物馆', bazaar: '市场/鱼市',
+      waterfront: '海滩/船游', viewpoint: '观景/峡谷', neighborhood: '小镇街区', experience: '特色体验',
+    },
+  };
+  (global.CityPacks = global.CityPacks || {})[pack.id] = pack;
+  if (typeof module !== 'undefined' && module.exports) module.exports = pack;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 /* ===== js/planner.js ===== */
 /* 通用旅行行程引擎（不绑定任何城市；数据由"城市包"提供）
  * 纯函数、确定性输出；浏览器挂 window.Planner，Node 走 module.exports。
@@ -2579,6 +2955,14 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     const chosen = new Set();
     const dinnerNamesUsed = [];
 
+    // 自驾包可选：routeOrder = 沿线推进顺序（分区数组），startDistrict = 起点分区
+    const routeIdx = {};
+    if (activePack && activePack.routeOrder) activePack.routeOrder.forEach((d, i) => { routeIdx[d] = i; });
+    let frontier = activePack && activePack.startDistrict && routeIdx[activePack.startDistrict] !== undefined
+      ? routeIdx[activePack.startDistrict] : -1;
+    // 人群硬过滤：对该人群适配 ≤2 的项目不排（无论分数多高）
+    const fitOk = a => !cfg.group || !a.groupFit || !a.groupFit[cfg.group] || a.groupFit[cfg.group] > 2;
+
     const days = [];
     for (let d = 0; d < cfg.days; d++) {
       const date = startDate ? addDays(startDate, d) : null;
@@ -2589,13 +2973,20 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     }
 
     for (const day of days) {
-      // 1) 当日锚点：可用候选中分数最高
-      const avail = attractions
-        .filter(a => !chosen.has(a.id) && !closedOn(a, day.date))
-        .sort((x, y) => scoreAttraction(y, cfg, null, day.index - 1) - scoreAttraction(x, cfg, null, day.index - 1)
-          || (x.id < y.id ? -1 : 1));
+      // 1) 当日锚点：可用候选中分数最高（自驾包：只向前推进不回头；Day1 优先起点区）
+      let avail = attractions
+        .filter(a => !chosen.has(a.id) && !closedOn(a, day.date) && fitOk(a))
+        .filter(a => !Object.keys(routeIdx).length || (routeIdx[a.district] !== undefined
+          && routeIdx[a.district] >= frontier && routeIdx[a.district] <= frontier + 1));
+      if (day.index === 1 && activePack && activePack.startDistrict) {
+        const atStart = avail.filter(a => a.district === activePack.startDistrict);
+        if (atStart.length) avail = atStart;
+      }
+      avail.sort((x, y) => scoreAttraction(y, cfg, null, day.index - 1) - scoreAttraction(x, cfg, null, day.index - 1)
+        || (x.id < y.id ? -1 : 1));
       if (!avail.length) break;
       const anchor = avail[0];
+      if (routeIdx[anchor.district] !== undefined) frontier = Math.max(frontier, routeIdx[anchor.district]);
       chosen.add(anchor.id);
       day.anchor = anchor;
       day.used = anchor.duration * 60;
@@ -2607,7 +2998,9 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
       // 2) 填充：同区优先、容量与清真寺上限约束
       let mosques = anchor.category === 'mosque' ? 1 : 0;
       let pool = attractions
-        .filter(a => !chosen.has(a.id) && !closedOn(a, day.date))
+        .filter(a => !chosen.has(a.id) && !closedOn(a, day.date) && fitOk(a))
+        .filter(a => !Object.keys(routeIdx).length || (routeIdx[a.district] !== undefined
+          && routeIdx[a.district] >= frontier && routeIdx[a.district] <= frontier + 1))
         .sort((x, y) => scoreAttraction(y, cfg, anchor.district, day.index - 1)
           - scoreAttraction(x, cfg, anchor.district, day.index - 1)
           || (x.id < y.id ? -1 : 1));
@@ -2695,6 +3088,9 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
       day.costPerPerson = day.stops.reduce((acc, s) => {
         return [acc[0] + s.attr.price[0], acc[1] + s.attr.price[1]];
       }, [0, 0]);
+      // 自驾包：当日到访过的最远分区计入推进（fill 到过也算，避免下一日被锁死）
+      for (const st of day.stops)
+        if (routeIdx[st.attr.district] !== undefined) frontier = Math.max(frontier, routeIdx[st.attr.district]);
     }
 
     // 6) 未安排清单与原因
@@ -2757,13 +3153,14 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     const perCar = pk.taxiPerRide || [250, 450];
     const perRide = pk.transitPerRide || [30, 50];
     const carCap = pk.taxiPerCar || 4;
+    const carLabel = pk.taxiLabel || '出租车';
     let transport, transportNote = [];
     if (transportMode === 'mix') {
       const cars = Math.ceil(heads / carCap);
       transport = [perCar[0] * cars * plan.cfg.days + perRide[0] * heads * plan.cfg.days,
                    perCar[1] * cars * plan.cfg.days + perRide[1] * heads * plan.cfg.days];
-      if (cars > 1) transportNote.push('共 ' + heads + ' 人，出租车需 ' + cars + ' 辆（每车限 ' + carCap + ' 人含副驾），打车费用×' + cars + '。');
-      else transportNote.push(carCap + ' 人内一辆出租车即可；按每日约 1 整程打车+其余公交核算。');
+      if (cars > 1) transportNote.push('共 ' + heads + ' 人，需 ' + cars + ' 辆' + carLabel + '（每辆按 ' + carCap + ' 人核算），费用×' + cars + '。');
+      else transportNote.push(carCap + ' 人内一辆' + carLabel + '即可' + (pk.mixNote || '；按每日约 1 整程打车+其余公交核算。'));
     } else {
       // 全程公共交通：按每人每日约 3 程核算
       transport = [perRide[0] * 3 * heads * plan.cfg.days, perRide[1] * 3 * heads * plan.cfg.days];
@@ -2866,6 +3263,17 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     if (Array.isArray(p.TOP_PICKS)) p.TOP_PICKS.forEach(id => {
       if (!ids.has(id)) E('TOP_PICKS："' + id + '" 不存在于 ATTRACTIONS');
     });
+
+    // 自驾包可选字段
+    if (p.routeOrder) {
+      if (!Array.isArray(p.routeOrder) || new Set(p.routeOrder).size !== p.routeOrder.length)
+        E('routeOrder：必须是分区 key 的不重复数组');
+      else {
+        const missing = districts.filter(d => !p.routeOrder.includes(d));
+        if (missing.length) E('routeOrder：缺少分区 ' + missing.join('/') + '（必须覆盖全部分区）');
+      }
+    }
+    if (p.startDistrict && !districts.includes(p.startDistrict)) E('startDistrict "' + p.startDistrict + '" 不在 DISTRICTS 中');
 
     // 换乘矩阵：所有分区对全覆盖（含双序任一）
     for (let i = 0; i < districts.length; i++) for (let j = i + 1; j < districts.length; j++) {
@@ -3097,7 +3505,7 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     // 交通方式
     $('#p-transport').innerHTML = Object.entries(D.TRANSPORT_MODES || {})
       .map(([k, v]) => `<option value="${k}">${v.label}</option>`).join('') || '<option value="public">公共交通</option>';
-    $('#p-transport').value = 'public';
+    $('#p-transport').value = Object.keys(D.TRANSPORT_MODES || {})[0] || 'public';
     $('#plan-out').innerHTML = '';
   }
 
