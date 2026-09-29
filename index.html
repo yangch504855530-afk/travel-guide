@@ -172,6 +172,33 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
   border: 1px solid var(--line); font-size: 12.5px; background: #fff; color: var(--ink); }
 @media print { .day-edit, .rm { display: none !important; } }
 
+/* 双人戏精模式 */
+.quest-row label { display: block; font-size: 14px; margin: 6px 0; }
+.quest-row input { vertical-align: -2px; margin-right: 6px; }
+.role-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.role-card { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.role-head { font-weight: 800; color: var(--teal-dark); margin-bottom: 4px; }
+.role-btn { margin-top: 8px; border: 1px solid var(--teal); background: #eef5f4; color: var(--teal-dark);
+  font-weight: 700; border-radius: 999px; padding: 4px 14px; cursor: pointer; font-size: 13px; }
+.need-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 620px) { .need-cols { grid-template-columns: 1fr; } }
+.need-col b { display: block; margin-bottom: 6px; }
+.need-chip { display: flex; justify-content: space-between; align-items: center; font-size: 13px;
+  border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin: 5px 0; cursor: pointer; background: #fff; }
+.need-chip.lv1 { border-color: #e6c46a; background: #fdf6e3; }
+.need-chip.lv2 { border-color: var(--danger); background: #fdeceb; }
+.need-chip b { font-size: 12px; }
+.lv1 b { color: #9a7b1c; } .lv2 b { color: var(--danger); }
+.draw-bar { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.suit-btn { border: 2px solid var(--line); background: #fff; border-radius: 999px; padding: 7px 14px;
+  font-size: 13.5px; cursor: pointer; color: var(--ink); font-weight: 600; }
+.suit-btn:hover { background: var(--bg); }
+.card-stage { min-height: 90px; }
+.drawn { border: 2px dashed var(--teal); border-radius: 12px; padding: 12px 14px; font-size: 15px;
+  line-height: 1.7; background: #fff; position: relative; }
+.suit-tag { display: inline-block; color: #fff; font-size: 12px; border-radius: 999px;
+  padding: 2px 10px; margin-bottom: 8px; margin-right: 8px; }
+
 </style>
 </head>
 <body>
@@ -195,6 +222,7 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
   <button data-tab="planner">🧳 行程规划</button>
   <button data-tab="transport">🚏 交通指南</button>
   <button data-tab="tips">🧠 实用贴士</button>
+  <button data-tab="game">🎮 双人戏</button>
 </nav>
 
 <main>
@@ -239,6 +267,7 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
   </section>
   <section class="view" id="view-transport"></section>
   <section class="view" id="view-tips"></section>
+  <section class="view" id="view-game"></section>
 </main>
 
 <footer>🌍 通用旅行攻略工具：内置城市包 + 导入任意城市包 ｜ 数据为近似区间，行前以官方为准</footer>
@@ -3408,6 +3437,273 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
 
 </script>
 <script>
+/* ===== js/game.js ===== */
+/* 双人戏精模式 —— 模拟人生式旅途小剧场（角色/需求条/戏码卡/每日主线）
+ * 数据与纯函数在此（可测）；渲染 renderGame() 由 app.js 在 DOMContentLoaded 调用。
+ */
+(function (global) {
+  'use strict';
+
+  /* ---------------- 戏码卡（4 花色 × 8 张） ---------------- */
+  const SUITS = {
+    gentle: { name: '温柔戏', icon: '🌅', color: '#0f6b6b' },
+    fun:    { name: '整活戏', icon: '🎭', color: '#c2571b' },
+    photo:  { name: '出片戏', icon: '📸', color: '#5a3d8a' },
+    road:   { name: '公路戏', icon: '🚗', color: '#8a5a12' },
+  };
+
+  const CARDS = [
+    { id: 'g1', suit: 'gentle', text: '日落档：各说一件"今天你做得挺好的地方"。只许一件，不许跟"但是"。' },
+    { id: 'g2', suit: 'gentle', text: '接下来 2 小时由对方决定全部安排，你只负责跟随和鼓掌。' },
+    { id: 'g3', suit: 'gentle', text: '互相说说"这几天你辛苦在哪"。只陈述，不辩论，不纠正。' },
+    { id: 'g4', suit: 'gentle', text: '把对方拍得最好的一张设成你的锁屏，当场给对方看。' },
+    { id: 'g5', suit: 'gentle', text: '"假如今天能重过"：各说一个会改的小细节，和一件绝不改的。' },
+    { id: 'g6', suit: 'gentle', text: '并排坐 10 分钟不说话，只看海。谁先开口谁明早负责叫醒服务。' },
+    { id: 'g7', suit: 'gentle', text: '把今天最想吐槽的事，用"我希望…"开头重新说一遍。' },
+    { id: 'g8', suit: 'gentle', text: '互相颁一个"今日奖项"，奖名自创——比如"最佳忍住不吐槽奖"。' },
+    { id: 'f1', suit: 'fun', text: '未来 1 小时你们是"土耳其财阀夫妇微服私访"，每 10 分钟对一次暗号（暗号自创）。' },
+    { id: 'f2', suit: 'fun', text: '用对方的口吻复述今天最累的瞬间。要像，但不许人身攻击。' },
+    { id: 'f3', suit: 'fun', text: '给今天遇到的第一只猫/狗起名字，并拍一张"官方定妆照"。' },
+    { id: 'f4', suit: 'fun', text: '只用歌词对话 10 分钟。土耳其歌也行，编就完了。' },
+    { id: 'f5', suit: 'fun', text: '互相采访：你是记者，问 3 个问题，对方必须一本正经地胡说八道。' },
+    { id: 'f6', suit: 'fun', text: '猜对方今天心里最想的一顿饭/一个地方。猜错表演深蹲 3 个。' },
+    { id: 'f7', suit: 'fun', text: '路边挑一件 100 里拉以内的小礼物送给对方，限时 10 分钟。' },
+    { id: 'f8', suit: 'fun', text: '用 3 个词形容今天的对方，让对方猜哪一个是你瞎编的。' },
+    { id: 'p1', suit: 'photo', text: '拍照对决：各给对方拍 3 张，全程不许指导。日落前各选"今日最佳"并说理由。' },
+    { id: 'p2', suit: 'photo', text: '三脚架自拍一张双人合照，表情要求：浮夸。' },
+    { id: 'p3', suit: 'photo', text: '找 3 个"假装在欧洲"的机位拍成明信片，发朋友圈让对方配文。' },
+    { id: 'p4', suit: 'photo', text: '剪影挑战：日落逆光各拍一张，谁更"高级"由猜拳决定。' },
+    { id: 'p5', suit: 'photo', text: '"走进画面"练习：她从画面外走来回头，连拍 20 张选 1 张。今天不许说"不够自然"。' },
+    { id: 'p6', suit: 'photo', text: '拍一张"只有我们俩在土耳其才会拍"的照片。越离谱越好。' },
+    { id: 'p7', suit: 'photo', text: '对方当导演：机位姿势全由对方定，你只按快门并保持沉默。' },
+    { id: 'p8', suit: 'photo', text: '老照片复刻：选一张你们的旧合照，现场摆同款构图拍"续集"。' },
+    { id: 'r1', suit: 'road', text: '山羊堵路演习：谁下车交涉？输的人负责下一次加油全流程。' },
+    { id: 'r2', suit: 'road', text: '副驾 DJ 时段：对方点 3 首歌不许跳过，听完要说"有品位"。' },
+    { id: 'r3', suit: 'road', text: '加油站演练：说出离你最近的两个加油站品牌。答不上来现查地图。' },
+    { id: 'r4', suit: 'road', text: '手势导航 10 分钟：副驾不许说话，只用手势指路。' },
+    { id: 'r5', suit: 'road', text: '服务区美食轮盘：对方闭眼指菜单，指到什么吃什么。' },
+    { id: 'r6', suit: 'road', text: '"如果是公路电影"：你们这部电影叫什么？各起一个片名，平票算导演赢。' },
+    { id: 'r7', suit: 'road', text: '停车挑战：倒车入位一次成功对方买冰淇淋，失败自己买。' },
+    { id: 'r8', suit: 'road', text: '副驾接管今天全部导航与提醒，司机只管开——直到下一个停车点。' },
+  ];
+
+  /* ---------------- 角色（每日轮换） ---------------- */
+  const ROLES = [
+    { id: 'driver', icon: '🚗', name: '首席司机', duty: '方向盘、加油、停车', perk: '音乐副驾承包，路上想停就停' },
+    { id: 'photo',  icon: '📸', name: '首席摄影总监', duty: '参考图、机位、修图预设', perk: '拍摄档一结束立刻收工' },
+    { id: 'food',   icon: '🍢', name: '首席干饭官', duty: '选餐厅、点菜、砍价', perk: '点砸了不被追责' },
+    { id: 'money',  icon: '💰', name: '首席财务大臣', duty: '预算、记账、汇率', perk: '小额消费免审批' },
+  ];
+
+  /* ---------------- 需求条（模拟人生式，点按循环：充足→偏低→告急） ---------------- */
+  const NEEDS = [
+    { id: 'caffeine', icon: '☕', name: '咖啡因', low: '"随便"出现频率翻倍', charge: '观景台一杯 çay、酒店慢早餐' },
+    { id: 'battery',  icon: '🔋', name: '电量', low: '导航语气开始变冲', charge: '不赶路日、午休 30 分钟、今晚早睡' },
+    { id: 'photo',    icon: '📸', name: '出片欲', low: '反复打开相册和朋友圈', charge: '日落档连拍 20 分钟 + 一键预设，或三脚架自助' },
+    { id: 'food',     icon: '🫖', name: '被投喂', low: '嘴上说"不饿"但盯着菜单', charge: '路边 Gözleme、鱼市场加餐、饭后冰淇淋' },
+    { id: 'praise',   icon: '💬', name: '被认可', low: '变沉默，或开始吐槽', charge: '日落档"今天你挺好的地方"×1，说的人要具体' },
+    { id: 'drive',    icon: '🚙', name: '驾驶余量', low: '变道犹豫、叹气变多', charge: '副驾接管导航 + 递水 + 放对方喜欢的歌' },
+    { id: 'control',  icon: '🧭', name: '掌控感', low: '反复确认"接下来去哪"', charge: '花 5 分钟预告明日行程，含一个自由时段' },
+    { id: 'spark',    icon: '🎁', name: '惊喜感', low: '对一切评价"还行"', charge: '路边冰淇淋、绕路 5 分钟看海、突然的小礼物' },
+  ];
+
+  /* ---------------- 纯函数（可测） ---------------- */
+  function hashDate(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
+
+  function mulberry32(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // 每日主线：温柔戏 1 张 + 整活戏 1 张，按日期确定性抽取
+  function pickDaily(dateStr) {
+    const rnd = mulberry32(hashDate(dateStr || '2026-10-01'));
+    const gentle = CARDS.filter(c => c.suit === 'gentle');
+    const fun = CARDS.filter(c => c.suit === 'fun');
+    return { main: gentle[Math.floor(rnd() * gentle.length)], side: fun[Math.floor(rnd() * fun.length)] };
+  }
+
+  function drawRandom(excludeIds, rnd) {
+    const pool = CARDS.filter(c => !(excludeIds || []).includes(c.id));
+    if (!pool.length) return null;
+    return pool[Math.floor((typeof rnd === 'function' ? rnd() : Math.random()) * pool.length)];
+  }
+
+  // 按花色抽牌（排除当日该花色已抽过的），耗尽返回 null
+  function drawFromSuit(suit, excludeIds, rnd) {
+    const pool = CARDS.filter(c => c.suit === suit && !(excludeIds || []).includes(c.id));
+    if (!pool.length) return null;
+    return pool[Math.floor((typeof rnd === 'function' ? rnd() : Math.random()) * pool.length)];
+  }
+
+  global.TravelGame = { SUITS, CARDS, ROLES, NEEDS, pickDaily, drawRandom, drawFromSuit, hashDate, mulberry32 };
+  if (typeof module !== 'undefined' && module.exports) module.exports = global.TravelGame;
+
+  /* ---------------- 渲染（仅浏览器） ---------------- */
+  if (typeof document === 'undefined') return;
+
+  const LS = (k, v) => {
+    try {
+      if (v === undefined) return localStorage.getItem(k);
+      localStorage.setItem(k, v);
+    } catch (e) { return null; }
+  };
+  const todayKey = () => 'tg.' + new Date().toISOString().slice(0, 10);
+  const jget = (k, dft) => { try { return JSON.parse(LS(k)) || dft; } catch (e) { return dft; } };
+  const jset = (k, v) => LS(k, JSON.stringify(v));
+  const esc = s => String(s).replace(/[&<>\"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  let toastTimer = null;
+  function toast(html, isErr) {
+    let el = document.getElementById('toast');
+    if (!el) { el = document.createElement('div'); el.id = 'toast'; document.body.appendChild(el); }
+    el.innerHTML = html;
+    el.className = 'show' + (isErr ? ' err' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ''; }, isErr ? 6000 : 3500);
+  }
+
+  function renderGame() {
+    const root = document.getElementById('view-game');
+    if (!root) return;
+    const daily = pickDaily(new Date().toISOString().slice(0, 10));
+    const quest = jget(todayKey() + '.quest', { main: false, side: false });
+    const roles = jget(todayKey() + '.roles', {});
+    const needs = jget(todayKey() + '.needs', {});
+    const freeUses = jget(todayKey() + '.free', 2);
+
+    root.innerHTML = `
+      <h2 class="vt">🎮 双人戏精模式</h2>
+      <p class="vd">给"喜好不同的两个人"的旅途小剧场。唯一验收标准是<b>笑</b>；任一方可打 🛡️ 免战牌（每日 2 次）；本模式禁止用于翻旧账。</p>
+
+      <div class="card" style="margin-bottom:12px">
+        <h3>📜 今日主线 & 支线</h3>
+        <div class="quest-row">
+          <label><input type="checkbox" id="q-main" ${quest.main ? 'checked' : ''}>
+            <b>🌅 主线：</b>${esc(daily.main.text)}</label>
+          <label><input type="checkbox" id="q-side" ${quest.side ? 'checked' : ''}>
+            <b>🎭 支线：</b>${esc(daily.side.text)}</label>
+        </div>
+        <p class="desc">主线支线每天自动更换（按日期），完成打勾。全完成可领取精神奖励：对方的晚安吻或同等价值物。</p>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <h3>🎫 今日角色（点按轮换：待分配 → 你 → 她）</h3>
+        <div class="role-grid">${ROLES.map(r => `
+          <div class="role-card" data-role="${r.id}">
+            <div class="role-head">${r.icon} ${r.name}</div>
+            <div class="desc">职责：${esc(r.duty)}</div>
+            <div class="desc">特权：${esc(r.perk)}</div>
+            <button class="role-btn">${esc(roles[r.id] || '待分配')}</button>
+          </div>`).join('')}</div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px">
+        <h3>📊 需求条（模拟人生式·点按循环 充足→偏低→告急）</h3>
+        <p class="desc">给对方做体检比给自己难——建议互相点名检查。告急=今晚必须执行的充能动作。</p>
+        <div class="need-cols">
+          <div class="need-col"><b>🧍 你</b>${NEEDS.map(n => needChip(n, (needs.you || {})[n.id])).join('')}</div>
+          <div class="need-col"><b>👩 她</b>${NEEDS.map(n => needChip(n, (needs.her || {})[n.id])).join('')}</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>🎴 戏码卡池（${CARDS.length} 张）</h3>
+        <p class="desc">点花色抽一张，抽到什么演什么。今天的牌抽完会记录，不会重复。</p>
+        <div class="draw-bar">${Object.entries(SUITS).map(([k, s]) =>
+          `<button class="suit-btn" data-suit="${k}" style="border-color:${s.color}">${s.icon} ${s.name}</button>`).join('')}
+          <button class="suit-btn free-btn" id="btn-free">🛡️ 免战牌（剩 ${freeUses}）</button>
+        </div>
+        <div id="card-stage" class="card-stage"><p class="desc">戏码将显示在这里。</p></div>
+      </div>`;
+
+    // 主线支线打勾
+    [['q-main', 'main'], ['q-side', 'side']].forEach(([id, k]) => {
+      const el = document.getElementById(id);
+      el.addEventListener('change', () => {
+        quest[k] = el.checked; jset(todayKey() + '.quest', quest);
+        if (quest.main && quest.side) toast('🏆 主线支线全清！今晚兑现精神奖励。');
+      });
+    });
+    // 角色轮换
+    root.querySelectorAll('.role-card').forEach(card => {
+      const rid = card.dataset.role;
+      card.querySelector('.role-btn').addEventListener('click', () => {
+        const cycle = ['待分配', '你', '她'];
+        const cur = roles[rid] || '待分配';
+        roles[rid] = cycle[(cycle.indexOf(cur) + 1) % 3];
+        jset(todayKey() + '.roles', roles);
+        renderGame();
+      });
+    });
+    // 需求条点按
+    root.querySelectorAll('.need-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const who = chip.dataset.who, nid = chip.dataset.need;
+        if (!needs[who]) needs[who] = {};
+        const lv = ((needs[who][nid] || 0) + 1) % 3;
+        needs[who][nid] = lv;
+        jset(todayKey() + '.needs', needs);
+        renderGame();
+        if (lv === 2) toast('🚨 ' + (who === 'you' ? '你' : '她') + '的「' +
+          (NEEDS.find(x => x.id === nid) || {}).name + '」告急——今晚执行充能动作！');
+      });
+    });
+    // 抽卡
+    const drawn = () => jget(todayKey() + '.drawn', []);
+    root.querySelectorAll('.suit-btn[data-suit]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const suit = btn.dataset.suit;
+        const card = drawFromSuit(suit, drawn(), null);
+        if (!card) { toast('这个花色的牌今天抽完了，换一个花色吧。', true); return; }
+        const all = drawn(); all.push(card.id); jset(todayKey() + '.drawn', all);
+        showCard(card);
+      });
+    });
+    // 免战牌
+    document.getElementById('btn-free').addEventListener('click', () => {
+      if (freeUses <= 0) { toast('今天的免战牌用完了——按规则，戏码得演完。', true); return; }
+      jset(todayKey() + '.free', freeUses - 1);
+      document.getElementById('card-stage').innerHTML =
+        '<p class="desc">🛡️ 免战牌打出。本回合作废，对方不许追问原因。</p>';
+    });
+
+    function needChip(n, lv) {
+      const labels = ['充足', '偏低', '告急'];
+      const v = lv || 0;
+      return `<div class="need-chip lv${v}" data-who="${''}" data-need="${n.id}" title="${esc(n.low)} / 充能：${esc(n.charge)}">
+        ${n.icon} ${n.name} <b>${labels[v]}</b></div>`;
+    }
+    function showCard(card) {
+      const s = SUITS[card.suit];
+      document.getElementById('card-stage').innerHTML =
+        `<div class="drawn" style="border-color:${s.color}"><span class="suit-tag" style="background:${s.color}">${s.icon} ${s.name}</span>
+         <p>${esc(card.text)}</p></div>`;
+    }
+  }
+
+  // 需求条 data-who 修正（needChip 里无法直接取到，渲染后统一补）
+  const origRender = renderGame;
+  renderGame = function () {
+    origRender();
+    document.querySelectorAll('#view-game .need-col').forEach((col, ci) => {
+      const who = ci === 0 ? 'you' : 'her';
+      col.querySelectorAll('.need-chip').forEach(chip => { chip.dataset.who = who; });
+    });
+  };
+  global.TravelGame.renderGame = renderGame;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
 /* ===== js/app.js ===== */
 /* 通用旅行攻略工具 — 视图层（多城市包） */
 (function () {
@@ -3932,6 +4228,7 @@ footer { text-align: center; color: var(--muted); font-size: 12px; padding: 20px
     bindLibrary();
     bindPlanner();
     switchCity(curId, true); // 初始化 + 渲染
+    if (window.TravelGame && window.TravelGame.renderGame) window.TravelGame.renderGame();
     switchTab('overview');
   });
 })();
